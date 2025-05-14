@@ -14,10 +14,6 @@ async function bootstrap() {
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
   });
-  console.log('JWT_SECRET:', process.env.JWT_SECRET || 'Not used (hardcoded)');
-  console.log('DATABASE_URL:', process.env.DATABASE_URL);
-  console.log('PORT:', process.env.PORT);
-  console.log('Server Time:', new Date().toISOString());
 
   const config = new DocumentBuilder()
     .setTitle('Coffie Space')
