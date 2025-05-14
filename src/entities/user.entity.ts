@@ -39,6 +39,7 @@ export class User {
     @OneToMany(() => Bookmark, b => b.bookmarkedUser)
     bookmarkedBy: Bookmark[]
 
+    @OneToOne(() => Profile, { cascade: true, eager: true })
     @JoinColumn()
     profile: Profile;
 }
