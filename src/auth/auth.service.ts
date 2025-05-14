@@ -19,7 +19,7 @@ export class AuthService {
         private readonly jwtService: JwtService,
         configService: ConfigService,
     ) {
-        this.jwtSecret = configService.get<string>('JWT_SECRET');
+        this.jwtSecret = process.env.JWT_SECRET;
         if (!this.jwtSecret) throw new Error('JWT_SECRET must be defined');
     }
 
