@@ -17,7 +17,6 @@ COPY package.json package-lock.json ./
 RUN npm ci --only=production && \
     npm cache clean --force
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
-COPY --chown=nestjs:nodejs .env .  # Copy .env file
 USER nestjs
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 CMD [ "node", "-e", "require('http').get('http://localhost:3000/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))" ]

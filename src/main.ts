@@ -7,13 +7,6 @@ import { FeedModule } from './feed/feed.module';
 import { InvitesModule } from './invites/invites.module';
 import { ChatsModule } from './chats/chats.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import * as dotenv from 'dotenv';
-
-if (process.env.NODE_ENV === 'production') {
-  dotenv.config({ path: '.env' });
-} else {
-  dotenv.config(); // Loads .env for local development
-}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
