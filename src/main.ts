@@ -7,6 +7,7 @@ import { FeedModule } from './feed/feed.module';
 import { InvitesModule } from './invites/invites.module';
 import { ChatsModule } from './chats/chats.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -15,9 +16,10 @@ async function bootstrap() {
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
   });
-  console.log('JWT_SECRET:', process.env.JWT_SECRET || 'Not set');
-  console.log('DATABASE_URL:', process.env.DATABASE_URL);
-  console.log('PORT:', process.env.PORT);
+  const configService = app.get(ConfigService);
+  console.log('JWT_SECRET:', configService.get('JWT_SECRET') || 'Not set');
+  console.log('DATABASE_URL:', configService.get('DATABASE_URL'));
+  console.log('PORT:', configService.get('PORT'));
   console.log('Server Time:', new Date().toISOString());
 
   const config = new DocumentBuilder()
@@ -44,6 +46,6 @@ async function bootstrap() {
     swaggerOptions: { persistAuthorization: true },
   });
 
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(configService.get('PORT') ?? 3000);
 }
 bootstrap();

@@ -1,5 +1,6 @@
 // src/auth/scraper.service.ts
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as puppeteer from 'puppeteer';
 
 interface Experience {
@@ -17,6 +18,7 @@ interface Education {
 
 @Injectable()
 export class ScraperService {
+    constructor(private configService: ConfigService) {}
     private readonly logger = new Logger(ScraperService.name);
 
     async fetchProfile(url: string): Promise<{
@@ -28,7 +30,7 @@ export class ScraperService {
         this.logger.log(`Scraping LinkedIn profile: ${url}`);
 
         const browser = await puppeteer.launch({
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+            executablePath: this.configService.get('PUPPETEER_EXECUTABLE_PATH'),
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
         });
