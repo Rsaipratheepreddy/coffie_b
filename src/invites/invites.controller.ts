@@ -34,7 +34,7 @@ export class InvitesController {
         @Param('inviteeId') inviteeId: string,
         @Request() req,
     ): Promise<Invitation> {
-        return this.invitesService.sendInvite(req.user.userId, inviteeId);
+        return this.invitesService.sendInvite(req.user.id, inviteeId);
     }
 
     @Put(':inviteId/accept')
@@ -45,7 +45,7 @@ export class InvitesController {
         @Param('inviteId') inviteId: string,
         @Request() req,
     ): Promise<Invitation> {
-        return this.invitesService.acceptInvite(inviteId, req.user.userId);
+        return this.invitesService.acceptInvite(inviteId, req.user.id);
     }
 
     @Put(':inviteId/reject')
@@ -56,7 +56,7 @@ export class InvitesController {
         @Param('inviteId') inviteId: string,
         @Request() req,
     ): Promise<Invitation> {
-        return this.invitesService.rejectInvite(inviteId, req.user.userId);
+        return this.invitesService.rejectInvite(inviteId, req.user.id);
     }
 
     @Get()
@@ -68,7 +68,7 @@ export class InvitesController {
         sent: Invitation[];
         received: Invitation[];
     }> {
-        return this.invitesService.getUserInvites(req.user.userId);
+        return this.invitesService.getUserInvites(req.user.id);
     }
 
     @Get('accepted')
@@ -80,7 +80,7 @@ export class InvitesController {
         acceptedSent: User[];
         acceptedReceived: User[];
     }> {
-        return this.invitesService.getAcceptedUsers(req.user.userId);
+        return this.invitesService.getAcceptedUsers(req.user.id);
     }
 
 }

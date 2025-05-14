@@ -42,13 +42,19 @@ export class Profile {
     selectedPromptIds: string[];
 
     @OneToOne(() => Background, { cascade: true, eager: true })
-    @JoinColumn()
+    @JoinColumn({ name: 'backgroundId' })
     background: Background;
 
-    @OneToMany(() => Experience, exp => exp.profile, { cascade: true, eager: true })
+    @OneToMany(() => Experience, exp => exp.profile, {
+        cascade: true,
+        eager: true,
+    })
     experiences: Experience[];
 
-    @OneToMany(() => Education, edu => edu.profile, { cascade: true, eager: true })
+    @OneToMany(() => Education, edu => edu.profile, {
+        cascade: true,
+        eager: true,
+    })
     education: Education[];
 
     @OneToOne(() => User, user => user.profile)

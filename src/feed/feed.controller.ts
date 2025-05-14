@@ -20,6 +20,7 @@ import { Bookmark } from 'src/entities/bookmark.entity';
 @ApiTags('Feed')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth('access-token')
 @Controller('feed')
 export class FeedController {
     constructor(private readonly feedService: FeedService) { }
@@ -28,25 +29,27 @@ export class FeedController {
     @ApiOperation({ summary: 'Get next available user in feed' })
     @ApiOkResponse({
         schema: {
-            example: { availableUsersCount: 42, user: { /* User object or null */ } },
+            example: { availableUsersCount: 42, user: {} },
         },
     })
     getFeed(@Request() req) {
-        return this.feedService.getFeed(req.user.userId);
+        console.log('req.user', req.user);
+        return this.feedService.getFeed(req.user.id);
     }
 
     @Get('bookmarks')
     @ApiOperation({ summary: 'Get all bookmarked profiles' })
     @ApiOkResponse({ type: [User] })
     getBookmarked(@Request() req): Promise<User[]> {
-        return this.feedService.getBookMarkedProfiles(req.user.userId);
+        console.log('req.user', req.user);
+        return this.feedService.getBookMarkedProfiles(req.user.id);
     }
 
     @Get('pass-by')
     @ApiOperation({ summary: 'Get all pass-by profiles' })
     @ApiOkResponse({ type: [User] })
     getPassBy(@Request() req): Promise<User[]> {
-        return this.feedService.getPassByProfiles(req.user.userId);
+        return this.feedService.getPassByProfiles(req.user.id);
     }
 
     @Put('bookmark/:targetId')
@@ -56,7 +59,7 @@ export class FeedController {
         @Param('targetId') targetId: string,
         @Request() req,
     ): Promise<Bookmark> {
-        return this.feedService.updateBookmark(req.user.userId, targetId);
+        return this.feedService.updateBookmark(req.user.id, targetId);
     }
 
     @Put('pass-by/:targetId')
@@ -66,6 +69,6 @@ export class FeedController {
         @Param('targetId') targetId: string,
         @Request() req,
     ): Promise<Bookmark> {
-        return this.feedService.updatePassBy(req.user.userId, targetId);
+        return this.feedService.updatePassBy(req.user.id, targetId);
     }
 }

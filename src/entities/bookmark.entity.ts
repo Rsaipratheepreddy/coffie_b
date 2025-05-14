@@ -6,8 +6,9 @@ import {
     CreateDateColumn,
     Column,
     Unique,
-} from 'typeorm'
-import { User } from './user.entity'
+    JoinColumn,
+} from 'typeorm';
+import { User } from './user.entity';
 
 export enum BookmarkType {
     BOOKMARK = 'bookmark',
@@ -18,21 +19,29 @@ export enum BookmarkType {
 @Unique(['user', 'bookmarkedUser', 'type'])
 export class Bookmark {
     @PrimaryGeneratedColumn('uuid')
-    id: string
+    id: string;
 
-    @ManyToOne(() => User, u => u.bookmarks, { nullable: false, onDelete: 'CASCADE' })
-    user: User
+    @ManyToOne(() => User, u => u.bookmarks, {
+        nullable: false,
+        onDelete: 'CASCADE',
+    })
+    @JoinColumn({ name: 'user_id' })
+    user: User;
 
-    @ManyToOne(() => User, u => u.bookmarkedBy, { nullable: false, onDelete: 'CASCADE' })
-    bookmarkedUser: User
+    @ManyToOne(() => User, u => u.bookmarkedBy, {
+        nullable: false,
+        onDelete: 'CASCADE',
+    })
+    @JoinColumn({ name: 'bookmarked_user_id' })
+    bookmarkedUser: User;
 
     @Column({
         type: 'enum',
         enum: BookmarkType,
         default: BookmarkType.BOOKMARK,
     })
-    type: BookmarkType
+    type: BookmarkType;
 
-    @CreateDateColumn({ type: 'timestamptz' })
-    createdAt: Date
+    @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
+    createdAt: Date;
 }

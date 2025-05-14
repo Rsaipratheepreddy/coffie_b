@@ -1,79 +1,71 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { use } from 'passport';
-import { Bookmark, BookmarkType } from 'src/entities/bookmark.entity';
-import { Invitation } from 'src/entities/invite.entity';
+import { Repository, In, Not } from 'typeorm';
 import { User } from 'src/entities/user.entity';
-import { In, Not, Repository } from 'typeorm';
+import { Bookmark, BookmarkType } from 'src/entities/bookmark.entity';
+import { Profile } from 'src/entities/profile.entity';
 
 @Injectable()
 export class FeedService {
-
     constructor(
         @InjectRepository(User)
         private readonly usersRepo: Repository<User>,
-
         @InjectRepository(Bookmark)
         private readonly bookmarkRepo: Repository<Bookmark>,
+        @InjectRepository(Profile)
+        private readonly profileRepo: Repository<Profile>,
     ) { }
-    ;
 
     async getFeed(userId: string) {
-        // 1) Get IDs of everyone you’ve “passed by”
-        const passedByRows = await this.usersRepo
-            .createQueryBuilder('user')
-            .innerJoin(
-                'user.bookmarks',
-                'bm',
-                'bm.userId = :userId AND bm.type = :passBy',
-                { userId, passBy: BookmarkType.PASS_BY },
-            )
-            .select('bm.bookmarkedUserId', 'id')
-            .getRawMany<{ id: string }>();
+        const bookmarks = await this.bookmarkRepo.find({
+            where: { user: { id: userId } },
+            relations: ['bookmarkedUser'],
+        });
 
-        const passedByIds = passedByRows.map(r => r.id);
+        const passedOnUsers = bookmarks
+            .filter(b => b.type === BookmarkType.PASS_BY)
+            .map(b => b.bookmarkedUser.id);
 
-        const availableUsers = await this.usersRepo.find({
-            where: {
-                id: Not(In([userId, ...passedByIds])),
+        const excludeIds = [userId, ...passedOnUsers];
+
+        const users = await this.usersRepo.find({
+            where: { id: Not(In(excludeIds)) },
+            relations: [
+                'profile',
+                'profile.background',
+                'profile.experiences',
+                'profile.education',
+            ],
+            select: {
+                id: true,
+                mobile: true,
+                profile: true,
             },
-            relations: ['profile'],
-
         });
 
         return {
-            availableUsersCount: availableUsers.length,
-            users: availableUsers,
+            availableUsersCount: users.length,
+            users,
         };
     }
-
-
 
     async getBookMarkedProfiles(userId: string): Promise<User[]> {
         const user = await this.usersRepo.findOne({
             where: { id: userId },
             relations: ['bookmarks', 'bookmarks.bookmarkedUser'],
         });
+        if (!user) throw new NotFoundException('User not found');
 
-        if (!user) {
-            throw new NotFoundException('User not found');
-        }
+        const ids = user.bookmarks
+            .filter(b => b.type === BookmarkType.BOOKMARK)
+            .map(b => b.bookmarkedUser.id);
 
-        const bookmarkList = user.bookmarks.filter(
-            (b) => b.type === BookmarkType.BOOKMARK,
-        );
+        if (ids.length === 0) return [];
 
-        if (bookmarkList.length === 0) {
-            return [];
-        }
-
-        const ids = bookmarkList.map((b) => b.bookmarkedUser.id);
-        const bookmarkedUsers = await this.usersRepo.find({
+        return this.usersRepo.find({
             where: { id: In(ids) },
-            relations: ['profile'],
+            relations: ['profile', 'profile.background', 'profile.experiences', 'profile.education'],
         });
-
-        return bookmarkedUsers;
     }
 
     async getPassByProfiles(userId: string): Promise<User[]> {
@@ -81,51 +73,33 @@ export class FeedService {
             where: { id: userId },
             relations: ['bookmarks', 'bookmarks.bookmarkedUser'],
         });
+        if (!user) throw new NotFoundException('User not found');
 
-        if (!user) {
-            throw new NotFoundException('User not found');
-        }
+        const ids = user.bookmarks
+            .filter(b => b.type === BookmarkType.PASS_BY)
+            .map(b => b.bookmarkedUser.id);
 
-        const passByList = user.bookmarks.filter(
-            b => b.type === BookmarkType.PASS_BY,
-        );
+        if (ids.length === 0) return [];
 
-        if (passByList.length === 0) {
-            return [];
-        }
-
-        const ids = passByList.map(b => b.bookmarkedUser.id);
-
-        const passedByUsers = await this.usersRepo.find({
+        return this.usersRepo.find({
             where: { id: In(ids) },
-            relations: ['profile'],
+            relations: ['profile', 'profile.background', 'profile.experiences', 'profile.education'],
         });
-
-        return passedByUsers;
     }
 
-    async updatePassBy(
-        userId: string,
-        targetUserId: string,
-    ): Promise<Bookmark> {
+    async updatePassBy(userId: string, targetUserId: string): Promise<Bookmark> {
         const [me, target] = await Promise.all([
             this.usersRepo.findOne({ where: { id: userId } }),
             this.usersRepo.findOne({ where: { id: targetUserId } }),
         ]);
-        if (!me || !target) {
-            throw new NotFoundException('User not found');
-        }
+        if (!me || !target) throw new NotFoundException('User not found');
 
         let bm = await this.bookmarkRepo.findOne({
             where: { user: { id: userId }, bookmarkedUser: { id: targetUserId } },
         });
 
         if (!bm) {
-            bm = this.bookmarkRepo.create({
-                user: me,
-                bookmarkedUser: target,
-                type: BookmarkType.PASS_BY,
-            });
+            bm = this.bookmarkRepo.create({ user: me, bookmarkedUser: target, type: BookmarkType.PASS_BY });
             return this.bookmarkRepo.save(bm);
         }
 
@@ -133,31 +107,23 @@ export class FeedService {
             bm.type = BookmarkType.PASS_BY;
             return this.bookmarkRepo.save(bm);
         }
+
         return bm;
     }
 
-    async updateBookmark(
-        userId: string,
-        targetUserId: string,
-    ): Promise<Bookmark> {
+    async updateBookmark(userId: string, targetUserId: string): Promise<Bookmark> {
         const [me, target] = await Promise.all([
             this.usersRepo.findOne({ where: { id: userId } }),
             this.usersRepo.findOne({ where: { id: targetUserId } }),
         ]);
-        if (!me || !target) {
-            throw new NotFoundException('User not found');
-        }
+        if (!me || !target) throw new NotFoundException('User not found');
 
         let bm = await this.bookmarkRepo.findOne({
             where: { user: { id: userId }, bookmarkedUser: { id: targetUserId } },
         });
 
         if (!bm) {
-            bm = this.bookmarkRepo.create({
-                user: me,
-                bookmarkedUser: target,
-                type: BookmarkType.BOOKMARK,
-            });
+            bm = this.bookmarkRepo.create({ user: me, bookmarkedUser: target, type: BookmarkType.BOOKMARK });
             return this.bookmarkRepo.save(bm);
         }
 
@@ -165,6 +131,7 @@ export class FeedService {
             bm.type = BookmarkType.BOOKMARK;
             return this.bookmarkRepo.save(bm);
         }
+
         return bm;
     }
 }

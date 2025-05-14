@@ -7,9 +7,9 @@ import {
     JoinColumn,
     OneToMany,
 } from 'typeorm';
-import { Profile } from './profile.entity';
 import { Invitation } from './invite.entity';
 import { Bookmark } from './bookmark.entity';
+import { Profile } from './profile.entity';
 
 @Entity()
 export class User {
@@ -19,13 +19,8 @@ export class User {
     @Column({ unique: true })
     mobile: string;
 
-    @Column({ unique: true })
+    @Column()
     password: string;
-
-    @OneToOne(() => Profile, profile => profile.user, {
-        cascade: true,
-        eager: true,
-    })
 
     @OneToMany(() => Invitation, inv => inv.inviter)
     sentInvitations: Invitation[];
@@ -34,12 +29,15 @@ export class User {
     receivedInvitations: Invitation[];
 
     @OneToMany(() => Bookmark, b => b.user)
-    bookmarks: Bookmark[]
+    bookmarks: Bookmark[];
 
     @OneToMany(() => Bookmark, b => b.bookmarkedUser)
-    bookmarkedBy: Bookmark[]
+    bookmarkedBy: Bookmark[];
 
-    @OneToOne(() => Profile, { cascade: true, eager: true })
-    @JoinColumn()
+    @OneToOne(() => Profile, profile => profile.user, {
+        cascade: true,
+        eager: true,
+    })
+    @JoinColumn({ name: 'profile_id' })
     profile: Profile;
 }

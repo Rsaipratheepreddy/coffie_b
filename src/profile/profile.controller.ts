@@ -38,7 +38,8 @@ export class ProfileController {
     @ApiOperation({ summary: 'Get current user profile' })
     @ApiOkResponse({ type: Profile })
     me(@Request() req): Promise<Profile> {
-        return this.profileService.getProfileByUserId(req.user.userId);
+        console.log('req.user', req.user);
+        return this.profileService.getProfileByUserId(req.user.id);
     }
 
     @Patch('base')
@@ -49,7 +50,7 @@ export class ProfileController {
         @Request() req,
         @Body() dto: UpdateProfileDto,
     ): Promise<Profile> {
-        return this.profileService.updateBaseProfileData(req.user.userId, dto);
+        return this.profileService.updateBaseProfileData(req.user.id, dto);
     }
 
     @Get('prompts')
@@ -67,7 +68,7 @@ export class ProfileController {
         @Request() req,
         @Body() dto: PromptDto,
     ): Promise<Profile> {
-        return this.profileService.addPromptToProfile(req.user.userId, dto);
+        return this.profileService.addPromptToProfile(req.user.id, dto);
     }
 
     @Put('prompts')
@@ -78,7 +79,7 @@ export class ProfileController {
         @Request() req,
         @Body() dto: PromptDto,
     ): Promise<Profile> {
-        return this.profileService.updatePromptInProfile(req.user.userId, dto);
+        return this.profileService.updatePromptInProfile(req.user.id, dto);
     }
 
     @Post('background')
@@ -89,7 +90,7 @@ export class ProfileController {
         @Request() req,
         @Body() dto: BackgroundDto,
     ): Promise<Profile> {
-        return this.profileService.addBackgroundToProfile(req.user.userId, dto);
+        return this.profileService.addBackgroundToProfile(req.user.id, dto);
     }
 
     @Put('background/:id')
@@ -111,7 +112,7 @@ export class ProfileController {
         @Request() req,
         @Body() dto: ExperienceDto,
     ): Promise<Profile> {
-        return this.profileService.addExperienceToProfile(req.user.userId, dto);
+        return this.profileService.addExperienceToProfile(req.user.id, dto);
     }
 
     @Put('experiences/:id')
@@ -142,7 +143,7 @@ export class ProfileController {
         @Request() req,
         @Body() dto: EducationDto,
     ): Promise<Profile> {
-        return this.profileService.addEducationToProfile(req.user.userId, dto);
+        return this.profileService.addEducationToProfile(req.user.id, dto);
     }
 
     @Put('education/:id')

@@ -31,7 +31,6 @@ export class Education {
 
     @ManyToOne(() => Profile, profile => profile.education, {
         onDelete: 'CASCADE',
-        eager: false,
     })
     profile: Profile;
 }

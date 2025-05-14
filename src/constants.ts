@@ -1,4 +1,4 @@
-const DEFAULT_PROMPTS = [
+export const DEFAULT_PROMPTS = [
     "My motivation to build a startup",
     "I'm passionate about",
     "In my free time, I",
