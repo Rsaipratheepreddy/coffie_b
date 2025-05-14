@@ -16,37 +16,37 @@ export class FeedService {
         @InjectRepository(Bookmark)
         private readonly bookmarkRepo: Repository<Bookmark>,
     ) { }
-
+    ;
 
     async getFeed(userId: string) {
+        // 1) Get IDs of everyone you’ve “passed by”
         const passedByRows = await this.usersRepo
             .createQueryBuilder('user')
-            .innerJoin('user.bookmarks', 'bm', 'bm.userId = :userId AND bm.type = :passBy', {
-                userId,
-                passBy: BookmarkType.PASS_BY,
-            })
+            .innerJoin(
+                'user.bookmarks',
+                'bm',
+                'bm.userId = :userId AND bm.type = :passBy',
+                { userId, passBy: BookmarkType.PASS_BY },
+            )
             .select('bm.bookmarkedUserId', 'id')
             .getRawMany<{ id: string }>();
 
         const passedByIds = passedByRows.map(r => r.id);
 
-        const nextUser = await this.usersRepo.findOne({
+        const availableUsers = await this.usersRepo.find({
             where: {
                 id: Not(In([userId, ...passedByIds])),
             },
-        });
+            relations: ['profile'],
 
-        const availableCount = await this.usersRepo.count({
-            where: {
-                id: Not(In([userId, ...passedByIds])),
-            },
         });
 
         return {
-            availableUsersCount: availableCount,
-            user: nextUser || null,
+            availableUsersCount: availableUsers.length,
+            users: availableUsers,
         };
     }
+
 
 
     async getBookMarkedProfiles(userId: string): Promise<User[]> {
