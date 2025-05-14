@@ -1,5 +1,3 @@
-Prod 
-
 # Build stage
 FROM node:18-bullseye-slim AS builder
 
