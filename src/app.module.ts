@@ -20,7 +20,7 @@ import { ConfigModule } from '@nestjs/config';
     }),
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env.template.production'],
+      envFilePath: ['.env'],
     }),
     AuthModule,
     FeedModule,
