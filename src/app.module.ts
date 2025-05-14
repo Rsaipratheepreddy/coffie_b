@@ -7,6 +7,7 @@ import { FeedModule } from './feed/feed.module';
 import { InvitesModule } from './invites/invites.module';
 import { ProfileModule } from './profile/profile.module';
 import { ChatsModule } from './chats/chats.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ChatsModule } from './chats/chats.module';
     InvitesModule,
     ProfileModule,
     ChatsModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
