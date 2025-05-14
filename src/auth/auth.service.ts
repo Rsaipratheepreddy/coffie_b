@@ -1,22 +1,27 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from 'src/entities/user.entity';
-import { Repository } from 'typeorm';
-import { LoginDto, SignupDto } from './dtos/signup.dto';
 import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
+import { Repository } from 'typeorm';
+import { User } from 'src/entities/user.entity';
+import { LoginDto, SignupDto } from './dtos/signup.dto';
 
 const DUMMY_OTP = '123456';
 
 @Injectable()
 export class AuthService {
+    private readonly jwtSecret: string;
 
     constructor(
         @InjectRepository(User)
-        private usersRepo: Repository<User>,
-        private jwtService: JwtService,
-    ) { }
-
+        private readonly usersRepo: Repository<User>,
+        private readonly jwtService: JwtService,
+        configService: ConfigService,
+    ) {
+        this.jwtSecret = configService.get<string>('JWT_SECRET');
+        if (!this.jwtSecret) throw new Error('JWT_SECRET must be defined');
+    }
 
     private hashPassword(password: string): string {
         const salt = randomBytes(16).toString('hex');
@@ -33,8 +38,10 @@ export class AuthService {
         if (otp !== DUMMY_OTP) throw new UnauthorizedException('Invalid OTP');
         const user = await this.usersRepo.findOne({ where: { mobile } });
         if (!user) throw new UnauthorizedException('Invalid credentials');
-
-        const token = this.jwtService.sign({ sub: user.id, mobile: user.mobile });
+        const token = this.jwtService.sign(
+            { sub: user.id, mobile: user.mobile },
+            { secret: this.jwtSecret },
+        );
         return { access_token: token };
     }
 
@@ -47,7 +54,6 @@ export class AuthService {
     async signup(dto: SignupDto) {
         const exists = await this.usersRepo.findOne({ where: { mobile: dto.mobile } });
         if (exists) throw new ConflictException('Mobile number already in use');
-
         const passwordHash = this.hashPassword(dto.password);
         const user = this.usersRepo.create({ mobile: dto.mobile, password: passwordHash });
         await this.usersRepo.save(user);
@@ -57,11 +63,12 @@ export class AuthService {
     async login(dto: LoginDto) {
         const user = await this.usersRepo.findOne({ where: { mobile: dto.mobile } });
         if (!user) throw new UnauthorizedException('Invalid credentials');
-
         const valid = this.verifyPassword(user.password, dto.password);
         if (!valid) throw new UnauthorizedException('Invalid credentials');
-
-        const token = this.jwtService.sign({ sub: user.id, mobile: user.mobile });
+        const token = this.jwtService.sign(
+            { sub: user.id, mobile: user.mobile },
+            { secret: this.jwtSecret },
+        );
         return { access_token: token };
     }
 
@@ -71,5 +78,4 @@ export class AuthService {
             select: ['id', 'mobile'],
         });
     }
-
 }
