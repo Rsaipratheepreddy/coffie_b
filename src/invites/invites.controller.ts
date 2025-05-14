@@ -22,6 +22,7 @@ import { User } from 'src/entities/user.entity';
 @ApiTags('Invites')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth('access-token')
 @Controller('invites')
 export class InvitesController {
     constructor(private readonly invitesService: InvitesService) { }

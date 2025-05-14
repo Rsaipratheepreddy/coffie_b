@@ -13,10 +13,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         @InjectRepository(User)
         private usersRepo: Repository<User>,
     ) {
+        const secreat = "f9d3e2a7b0c1d8f5e6a9b3c7d1e4f0a9c2b3d4e5f6a7b8c9d0e1f2a3b4c5d6"
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: configService.get<string>('JWT_SECRET') || 'f9d3e2a7b0c1d8f5e6a9b3c7d1e4f0a9c2b3d4e5f6a7b8c9d0e1f2a3b4c5d6',
+            secretOrKey: secreat,
         });
     }
 
