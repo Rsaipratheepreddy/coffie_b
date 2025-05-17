@@ -68,17 +68,28 @@ export class ProfileService {
             const page = await browser.newPage();
             await page.setViewport({ width: 1280, height: 800 });
 
-            // Set cookies for authentication
-            const cookies = process.env.LINKEDIN_COOKIES;
-            if (!cookies) {
-                throw new BadRequestException('LinkedIn authentication cookies not configured');
+            // Set LinkedIn authentication cookies
+            const liAt = process.env.LINKEDIN_COOKIES_LI_AT;
+            const jsessionId = process.env.LINKEDIN_COOKIES_JSESSIONID;
+
+            if (!liAt || !jsessionId) {
+                throw new BadRequestException('LinkedIn authentication cookies not fully configured. Required: li_at and JSESSIONID');
             }
 
-            await page.setCookie({
-                name: 'li_at',
-                value: cookies,
-                domain: '.linkedin.com'
-            });
+            const cookies = [
+                {
+                    name: 'li_at',
+                    value: liAt,
+                    domain: '.linkedin.com'
+                },
+                {
+                    name: 'JSESSIONID',
+                    value: jsessionId,
+                    domain: '.linkedin.com'
+                }
+            ];
+
+            await page.setCookie(...cookies);
 
             await page.goto(linkedinUrl, { waitUntil: 'networkidle0' });
 
