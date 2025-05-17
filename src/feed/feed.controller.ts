@@ -33,7 +33,6 @@ export class FeedController {
         },
     })
     getFeed(@Request() req) {
-        console.log('req.user', req.user);
         return this.feedService.getFeed(req.user.id);
     }
 

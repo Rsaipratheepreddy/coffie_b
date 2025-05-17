@@ -45,7 +45,8 @@ export class FeedService {
 
         return {
             availableUsersCount: users.length,
-            users,
+            latestUser: users.length > 0 ? users[0] : null,
+            emptyFeed: users.length === 0
         };
     }
 

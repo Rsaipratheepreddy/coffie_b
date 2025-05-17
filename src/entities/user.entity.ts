@@ -6,17 +6,19 @@ import {
     OneToOne,
     JoinColumn,
     OneToMany,
+    Index,
 } from 'typeorm';
 import { Invitation } from './invite.entity';
 import { Bookmark } from './bookmark.entity';
 import { Profile } from './profile.entity';
 
-@Entity()
+@Entity('user')
 export class User {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true })
+    @Index({ unique: true })
+    @Column()
     mobile: string;
 
     @Column()
