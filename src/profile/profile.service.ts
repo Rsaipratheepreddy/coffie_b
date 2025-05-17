@@ -60,15 +60,31 @@ export class ProfileService {
         }
 
         const browser = await puppeteer.launch({
-            headless: true,
+            headless: true, // Use headless mode
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
                 '--disable-accelerated-2d-canvas',
-                '--disable-gpu',
-                '--window-size=1920x1080'
-            ]
+                '--window-size=1920x1080',
+                '--disable-notifications',
+                '--enable-automation',
+                '--start-maximized'
+            ],
+            defaultViewport: {
+                width: 1920,
+                height: 1080
+            }
+        });
+        
+        // Enable request interception to log network issues
+        const pages = await browser.pages();
+        const page = pages[0] || await browser.newPage();
+        await page.setRequestInterception(true);
+        
+        // Log failed requests
+        page.on('requestfailed', request => {
+            console.error(`Failed request: ${request.url()} - ${request.failure().errorText}`);
         });
 
         try {
@@ -102,9 +118,40 @@ export class ProfileService {
             page.setDefaultNavigationTimeout(60000); // 60 seconds
             page.setDefaultTimeout(60000);
 
+            console.log('Navigating to LinkedIn profile...');
+            
+            // First try to load a simple LinkedIn page to verify cookies
+            await page.goto('https://www.linkedin.com/feed/', {
+                waitUntil: 'networkidle0',
+                timeout: 30000
+            });
+            
+            // Take a screenshot for debugging
+            await page.screenshot({ path: '/tmp/linkedin-debug.png' });
+            
+            // Check if we're logged in
+            const isLoggedIn = await page.evaluate(() => {
+                return !document.querySelector('.login__form') && 
+                       !window.location.href.includes('linkedin.com/login');
+            });
+            
+            if (!isLoggedIn) {
+                throw new BadRequestException(
+                    'LinkedIn cookies are expired. Please update them in .env:\n' +
+                    '1. Login to LinkedIn in Chrome\n' +
+                    '2. Press F12 for DevTools\n' +
+                    '3. Go to Application > Cookies > linkedin.com\n' +
+                    '4. Copy new values for li_at and JSESSIONID\n' +
+                    '5. Update LINKEDIN_COOKIES_LI_AT and LINKEDIN_COOKIES_JSESSIONID in .env'
+                );
+            }
+            
+            console.log('Successfully verified LinkedIn auth, loading profile...');
+            
+            // Now load the actual profile
             await page.goto(linkedinUrl, { 
                 waitUntil: 'networkidle0',
-                timeout: 60000
+                timeout: 30000
             });
 
             // Wait for key elements to be present
