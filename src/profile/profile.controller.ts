@@ -14,11 +14,12 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags, ApiOkResponse, ApiBadRequestResponse } from '@nestjs/swagger';
 import { ProfileService } from './profile.service';
 import {
-    UpdateProfileDto,
-    PromptDto,
     BackgroundDto,
-    ExperienceDto,
     EducationDto,
+    ExperienceDto,
+    PromptDto,
+    UpdateProfileDto,
+    ImportLinkedInProfileDto,
 } from './dtos/profile.dto';
 import { Profile } from 'src/entities/profile.entity';
 import { Background } from 'src/entities/background.entity';
@@ -51,6 +52,17 @@ export class ProfileController {
         @Body() dto: UpdateProfileDto,
     ): Promise<Profile> {
         return this.profileService.updateBaseProfileData(req.user.id, dto);
+    }
+
+    @Post('import/linkedin')
+    @ApiOperation({ summary: 'Import profile data from LinkedIn' })
+    @ApiOkResponse({ type: Profile })
+    @ApiBadRequestResponse({ description: 'Invalid LinkedIn URL or failed to fetch profile' })
+    importFromLinkedIn(
+        @Request() req,
+        @Body() dto: ImportLinkedInProfileDto,
+    ): Promise<Profile> {
+        return this.profileService.fetchProfileFromLinkedIn(req.user.id, dto.linkedinUrl);
     }
 
     @Get('prompts')

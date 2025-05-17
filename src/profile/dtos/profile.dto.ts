@@ -39,6 +39,11 @@ export class UpdateProfileDto {
     @IsUrl({}, { message: 'linkedin must be a valid URL' })
     linkedin?: string;
 
+    @ApiPropertyOptional({ description: 'Profile picture URL', example: 'https://example.com/profile.jpg' })
+    @IsOptional()
+    @IsUrl({}, { message: 'profilePicture must be a valid URL' })
+    profilePicture?: string;
+
     @ApiPropertyOptional({ description: 'Calendly or other scheduling link', example: 'https://calendly.com/saipratheep/30min' })
     @IsOptional()
     @IsUrl({}, { message: 'schedulingLink must be a valid URL' })
@@ -318,4 +323,10 @@ export class DeleteEducationDto {
     @ApiProperty({ description: 'Education record UUID', example: '550e8400-e29b-41d4-a716-446655440003' })
     @IsUUID()
     id: string;
+}
+
+export class ImportLinkedInProfileDto {
+    @ApiProperty({ description: 'LinkedIn profile URL', example: 'https://www.linkedin.com/in/jane-doe' })
+    @IsUrl({}, { message: 'linkedinUrl must be a valid URL' })
+    linkedinUrl: string;
 }

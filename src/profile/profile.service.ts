@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Profile } from 'src/entities/profile.entity';
+import * as puppeteer from 'puppeteer';
 import { User } from 'src/entities/user.entity';
 import { Background } from 'src/entities/background.entity';
 import { Experience } from 'src/entities/experience.entity';
@@ -51,6 +52,114 @@ export class ProfileService {
         });
         if (!profile) throw new NotFoundException(`Profile for user id=${userId} not found`);
         return profile;
+    }
+
+    async fetchProfileFromLinkedIn(userId: string, linkedinUrl: string): Promise<Profile> {
+        if (!linkedinUrl.includes('linkedin.com/in/')) {
+            throw new BadRequestException('Invalid LinkedIn profile URL');
+        }
+
+        const browser = await puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox']
+        });
+
+        try {
+            const page = await browser.newPage();
+            await page.setViewport({ width: 1280, height: 800 });
+
+            // Set cookies for authentication
+            const cookies = process.env.LINKEDIN_COOKIES;
+            if (!cookies) {
+                throw new BadRequestException('LinkedIn authentication cookies not configured');
+            }
+
+            await page.setCookie({
+                name: 'li_at',
+                value: cookies,
+                domain: '.linkedin.com'
+            });
+
+            await page.goto(linkedinUrl, { waitUntil: 'networkidle0' });
+
+            const profileData = await page.evaluate(() => {
+                const name = document.querySelector('h1')?.textContent?.trim() || '';
+                const about = document.querySelector('.pv-about-section')?.textContent?.trim() || '';
+                const profilePicture = document.querySelector('.pv-top-card-profile-picture__image')?.getAttribute('src') ||
+                    document.querySelector('.profile-photo-edit__preview')?.getAttribute('src') || '';
+
+                const experiences = Array.from(document.querySelectorAll('.experience-section .pv-entity__position-group'));
+                const parsedExperiences = experiences.map(exp => ({
+                    title: exp.querySelector('.pv-entity__summary-info h3')?.textContent?.trim() || '',
+                    company: exp.querySelector('.pv-entity__secondary-title')?.textContent?.trim() || '',
+                    duration: exp.querySelector('.pv-entity__date-range span:nth-child(2)')?.textContent?.trim() || '',
+                    description: exp.querySelector('.pv-entity__description')?.textContent?.trim() || ''
+                }));
+
+                const education = Array.from(document.querySelectorAll('.education-section .pv-education-entity'));
+                const parsedEducation = education.map(edu => ({
+                    school: edu.querySelector('h3')?.textContent?.trim() || '',
+                    degree: edu.querySelector('.pv-entity__degree-name .pv-entity__comma-item')?.textContent?.trim() || '',
+                    fieldOfStudy: edu.querySelector('.pv-entity__fos .pv-entity__comma-item')?.textContent?.trim() || '',
+                    duration: edu.querySelector('.pv-entity__dates span:nth-child(2)')?.textContent?.trim() || ''
+                }));
+
+                const skills = Array.from(document.querySelectorAll('.pv-skill-category-entity__name-text'))
+                    .map(skill => skill.textContent?.trim())
+                    .filter(Boolean);
+
+                return { name, about, profilePicture, experiences: parsedExperiences, education: parsedEducation, skills };
+            });
+
+            const profile = await this.updateBaseProfileData(userId, {
+                name: profileData.name,
+                profilePicture: profileData.profilePicture
+            });
+
+            for (const exp of profileData.experiences) {
+                const [startDate, endDate] = exp.duration.split(' - ');
+                const experienceData: ExperienceDto = {
+                    title: exp.title,
+                    company: exp.company,
+                    startDate: new Date(startDate || ''),
+                    endDate: endDate ? new Date(endDate) : new Date(),
+                    description: exp.description,
+                    currentlyWorkHere: endDate === 'Present'
+                };
+                const experience = this.experiencesRepo.create(experienceData);
+                experience.profile = profile;
+                await this.experiencesRepo.save(experience);
+            }
+
+            for (const edu of profileData.education) {
+                const [startDate, endDate] = edu.duration.split(' - ');
+                const educationData: EducationDto = {
+                    school: edu.school,
+                    degree: edu.degree,
+                    fieldOfStudy: edu.fieldOfStudy,
+                    startDate: new Date(startDate || ''),
+                    endDate: new Date(endDate || '')
+                };
+                const education = this.educationRepo.create(educationData);
+                education.profile = profile;
+                await this.educationRepo.save(education);
+            }
+
+            if (profileData.skills.length > 0) {
+                const backgroundData: BackgroundDto = {
+                    skills: profileData.skills
+                };
+                const background = this.backgroundsRepo.create(backgroundData);
+                background.profile = profile;
+                await this.backgroundsRepo.save(background);
+            }
+
+            return this.getProfileByUserId(userId);
+        } catch (error) {
+            throw new BadRequestException(`Failed to fetch LinkedIn profile: ${error.message}`);
+        } finally {
+            await browser.close();
+        }
     }
 
     async getAllPrompts() {

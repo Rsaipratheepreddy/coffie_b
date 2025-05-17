@@ -33,6 +33,9 @@ export class Profile {
     linkedin?: string;
 
     @Column({ nullable: true })
+    profilePicture?: string;
+
+    @Column({ nullable: true })
     schedulingLink?: string;
 
     @Column({ nullable: true })

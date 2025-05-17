@@ -16,7 +16,7 @@ export class FeedService {
         private readonly profileRepo: Repository<Profile>,
     ) { }
 
-    async getFeed(userId: string) {
+    async getFeed(userId: string, page = 1, limit = 10) {
         const bookmarks = await this.bookmarkRepo.find({
             where: { user: { id: userId } },
             relations: ['bookmarkedUser'],
@@ -28,63 +28,81 @@ export class FeedService {
 
         const excludeIds = [userId, ...passedOnUsers];
 
-        const users = await this.usersRepo.find({
+        const [users, total] = await this.usersRepo.findAndCount({
             where: { id: Not(In(excludeIds)) },
             relations: [
                 'profile',
                 'profile.background',
                 'profile.experiences',
                 'profile.education',
+                'profile.prompts',
+                'profile.interests',
             ],
-            select: {
-                id: true,
-                mobile: true,
-                profile: true,
+            select: ['id', 'mobile', 'profile'],
+            order: {
+                id: 'DESC',
             },
+            skip: (page - 1) * limit,
+            take: limit,
         });
 
         return {
-            availableUsersCount: users.length,
-            latestUser: users.length > 0 ? users[0] : null,
-            emptyFeed: users.length === 0
+            users,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+            emptyFeed: total === 0
         };
     }
 
     async getBookMarkedProfiles(userId: string): Promise<User[]> {
-        const user = await this.usersRepo.findOne({
-            where: { id: userId },
-            relations: ['bookmarks', 'bookmarks.bookmarkedUser'],
+        const bookmarks = await this.bookmarkRepo.find({
+            where: { user: { id: userId }, type: BookmarkType.BOOKMARK },
+            relations: ['bookmarkedUser'],
+            order: { id: 'DESC' },
         });
-        if (!user) throw new NotFoundException('User not found');
 
-        const ids = user.bookmarks
-            .filter(b => b.type === BookmarkType.BOOKMARK)
-            .map(b => b.bookmarkedUser.id);
-
+        const ids = bookmarks.map(b => b.bookmarkedUser.id);
         if (ids.length === 0) return [];
 
         return this.usersRepo.find({
             where: { id: In(ids) },
-            relations: ['profile', 'profile.background', 'profile.experiences', 'profile.education'],
+            relations: [
+                'profile',
+                'profile.background',
+                'profile.experiences',
+                'profile.education',
+                'profile.prompts',
+                'profile.interests',
+            ],
+            order: { id: 'DESC' },
         });
     }
 
     async getPassByProfiles(userId: string): Promise<User[]> {
-        const user = await this.usersRepo.findOne({
-            where: { id: userId },
-            relations: ['bookmarks', 'bookmarks.bookmarkedUser'],
+        const bookmarks = await this.bookmarkRepo.find({
+            where: { user: { id: userId }, type: BookmarkType.PASS_BY },
+            relations: ['bookmarkedUser'],
+            order: { id: 'DESC' },
         });
-        if (!user) throw new NotFoundException('User not found');
 
-        const ids = user.bookmarks
-            .filter(b => b.type === BookmarkType.PASS_BY)
-            .map(b => b.bookmarkedUser.id);
-
+        const ids = bookmarks.map(b => b.bookmarkedUser.id);
         if (ids.length === 0) return [];
 
         return this.usersRepo.find({
             where: { id: In(ids) },
-            relations: ['profile', 'profile.background', 'profile.experiences', 'profile.education'],
+            relations: [
+                'profile',
+                'profile.background',
+                'profile.experiences',
+                'profile.education',
+                'profile.prompts',
+                'profile.interests',
+            ],
+            order: { id: 'DESC' },
         });
     }
 
@@ -97,19 +115,21 @@ export class FeedService {
 
         let bm = await this.bookmarkRepo.findOne({
             where: { user: { id: userId }, bookmarkedUser: { id: targetUserId } },
+            relations: ['user', 'bookmarkedUser'],
         });
 
         if (!bm) {
-            bm = this.bookmarkRepo.create({ user: me, bookmarkedUser: target, type: BookmarkType.PASS_BY });
-            return this.bookmarkRepo.save(bm);
-        }
-
-        if (bm.type !== BookmarkType.PASS_BY) {
+            bm = this.bookmarkRepo.create({
+                user: me,
+                bookmarkedUser: target,
+                type: BookmarkType.PASS_BY,
+            });
+        } else {
             bm.type = BookmarkType.PASS_BY;
-            return this.bookmarkRepo.save(bm);
+            bm.createdAt = new Date();
         }
 
-        return bm;
+        return this.bookmarkRepo.save(bm);
     }
 
     async updateBookmark(userId: string, targetUserId: string): Promise<Bookmark> {
@@ -121,18 +141,20 @@ export class FeedService {
 
         let bm = await this.bookmarkRepo.findOne({
             where: { user: { id: userId }, bookmarkedUser: { id: targetUserId } },
+            relations: ['user', 'bookmarkedUser'],
         });
 
         if (!bm) {
-            bm = this.bookmarkRepo.create({ user: me, bookmarkedUser: target, type: BookmarkType.BOOKMARK });
-            return this.bookmarkRepo.save(bm);
-        }
-
-        if (bm.type !== BookmarkType.BOOKMARK) {
+            bm = this.bookmarkRepo.create({
+                user: me,
+                bookmarkedUser: target,
+                type: BookmarkType.BOOKMARK,
+            });
+        } else {
             bm.type = BookmarkType.BOOKMARK;
-            return this.bookmarkRepo.save(bm);
+            bm.createdAt = new Date();
         }
 
-        return bm;
+        return this.bookmarkRepo.save(bm);
     }
 }

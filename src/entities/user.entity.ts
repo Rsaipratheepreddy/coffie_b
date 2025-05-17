@@ -21,8 +21,13 @@ export class User {
     @Column()
     mobile: string;
 
-    @Column()
-    password: string;
+
+
+    @Column({ nullable: true })
+    otpHash: string;
+
+    @Column({ nullable: true })
+    otpExpiry: Date;
 
     @OneToMany(() => Invitation, inv => inv.inviter)
     sentInvitations: Invitation[];
