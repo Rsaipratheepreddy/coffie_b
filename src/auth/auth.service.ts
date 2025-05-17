@@ -118,13 +118,12 @@ export class AuthService {
         await queryRunner.startTransaction();
 
         try {
-            // Delete related entities first to avoid foreign key constraints
             await queryRunner.query('DELETE FROM bookmark');
             await queryRunner.query('DELETE FROM invitation');
             await queryRunner.query('DELETE FROM experience');
             await queryRunner.query('DELETE FROM education');
-            await queryRunner.query('DELETE FROM background');
             await queryRunner.query('DELETE FROM profile');
+            await queryRunner.query('DELETE FROM background');
             await queryRunner.query('DELETE FROM "user"');
 
             await queryRunner.commitTransaction();
@@ -141,7 +140,5 @@ export class AuthService {
         if (!user) {
             throw new UnauthorizedException('User not found');
         }
-        // In a real app, you might want to invalidate the token here
-        // For now, we'll just return as the client will remove the token
     }
 }
