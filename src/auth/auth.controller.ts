@@ -22,7 +22,7 @@ import {
     ApiConflictResponse,
     ApiNoContentResponse,
 } from '@nestjs/swagger';
-import { LoginDto, RequestOtpDto, SignupDto, VerifyOtpDto } from './dtos/signup.dto';
+import { RequestOtpDto, VerifyOtpDto } from './dtos/signup.dto';
 import { JwtAuthGuard } from './jwt-auth/jwt-auth.guard';
 import { AuthResponseDto } from './dtos/auth-response.dto';
 
@@ -41,25 +41,7 @@ export class AuthController {
         return this.authService.getProfile(req.user.id);
     }
 
-    @Post('signup')
-    @HttpCode(HttpStatus.CREATED)
-    @ApiOperation({ summary: 'Register with mobile + password' })
-    @ApiBody({ type: SignupDto })
-    @ApiResponse({ status: HttpStatus.CREATED, description: 'Signup successful', type: AuthResponseDto })
-    @ApiConflictResponse({ description: 'Mobile already in use' })
-    async signup(@Body() dto: SignupDto): Promise<AuthResponseDto> {
-        return this.authService.signup(dto);
-    }
 
-    @Post('login')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Login with mobile + password' })
-    @ApiBody({ type: LoginDto })
-    @ApiOkResponse({ description: 'Login successful', type: AuthResponseDto })
-    @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
-    async login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
-        return this.authService.login(dto);
-    }
 
     @Post('otp/request')
     @HttpCode(HttpStatus.OK)
@@ -90,5 +72,24 @@ export class AuthController {
     @ApiUnauthorizedResponse({ description: 'Not authenticated' })
     async logout(@Request() req): Promise<void> {
         await this.authService.logout(req.user.id);
+    }
+
+    @Delete('account')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Delete current user account' })
+    @ApiOkResponse({ description: 'Account deleted successfully' })
+    @ApiUnauthorizedResponse({ description: 'Not authenticated' })
+    async deleteAccount(@Request() req): Promise<{ message: string }> {
+        return this.authService.deleteUser(req.user.id);
+    }
+
+    @Delete('all')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Delete all users (open API)' })
+    @ApiOkResponse({ description: 'All users deleted successfully' })
+    async deleteAllUsers(): Promise<{ message: string }> {
+        return this.authService.deleteAllUsers();
     }
 }

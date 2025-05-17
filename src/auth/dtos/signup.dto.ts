@@ -18,24 +18,4 @@ export class VerifyOtpDto {
     otp: string;
 }
 
-export class SignupDto {
-    @ApiProperty({ example: '+919876543210' })
-    @IsMobilePhone()
-    mobile: string;
 
-    @ApiProperty({ example: 'mySecurePassword123' })
-    @IsString()
-    @MinLength(8)
-    password: string;
-}
-
-export class LoginDto {
-    @ApiProperty({ example: '+919876543210' })
-    @IsMobilePhone()
-    mobile: string;
-
-    @ApiProperty({ example: 'mySecurePassword123' })
-    @IsString()
-    @MinLength(8)
-    password: string;
-}

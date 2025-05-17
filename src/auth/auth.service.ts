@@ -1,12 +1,12 @@
-import { ConflictException, Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomInt } from 'crypto';
 import { Repository } from 'typeorm';
 import { User } from 'src/entities/user.entity';
-import { LoginDto, RequestOtpDto, SignupDto } from './dtos/signup.dto';
 import { AuthResponseDto } from './dtos/auth-response.dto';
+import { RequestOtpDto, VerifyOtpDto } from './dtos/signup.dto';
 
 @Injectable()
 export class AuthService {
@@ -28,7 +28,6 @@ export class AuthService {
 
     async sendOtp(mobile: string) {
         const otp = this.generateOtp();
-
 
         const user = await this.usersRepo.findOne({ where: { mobile } });
         const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
@@ -79,7 +78,7 @@ export class AuthService {
 
         return {
             access_token: token,
-            expires_in: 24 * 60 * 60 // 24 hours in seconds
+            expires_in: 24 * 60 * 60
         };
     }
 
@@ -108,47 +107,6 @@ export class AuthService {
     async deleteAllUsers() {
         await this.usersRepo.clear();
         return { message: 'All users deleted successfully' };
-    }
-
-    async signup(dto: SignupDto): Promise<AuthResponseDto> {
-        const { mobile } = dto;
-        const exists = await this.usersRepo.findOne({ where: { mobile } });
-
-        if (exists) {
-            throw new ConflictException('Mobile number already registered');
-        }
-
-        const user = this.usersRepo.create(dto);
-        await this.usersRepo.save(user);
-
-        const token = this.jwtService.sign(
-            { sub: user.id, mobile: user.mobile },
-            { secret: this.jwtSecret, expiresIn: '24h' },
-        );
-
-        return {
-            access_token: token,
-            expires_in: 24 * 60 * 60 // 24 hours in seconds
-        };
-    }
-
-    async login(dto: LoginDto): Promise<AuthResponseDto> {
-        const { mobile } = dto;
-        const user = await this.usersRepo.findOne({ where: { mobile } });
-
-        if (!user) {
-            throw new UnauthorizedException('Invalid credentials');
-        }
-
-        const token = this.jwtService.sign(
-            { sub: user.id, mobile: user.mobile },
-            { secret: this.jwtSecret, expiresIn: '24h' },
-        );
-
-        return {
-            access_token: token,
-            expires_in: 24 * 60 * 60 // 24 hours in seconds
-        };
     }
 
     async logout(userId: string): Promise<void> {
