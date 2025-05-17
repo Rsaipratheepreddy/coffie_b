@@ -5,7 +5,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { randomInt } from 'crypto';
 import { Repository } from 'typeorm';
 import { User } from 'src/entities/user.entity';
-import { RequestOtpDto, VerifyOtpDto } from './dtos/signup.dto';
+import { LoginDto, RequestOtpDto, SignupDto } from './dtos/signup.dto';
+import { AuthResponseDto } from './dtos/auth-response.dto';
 
 @Injectable()
 export class AuthService {
@@ -25,8 +26,7 @@ export class AuthService {
         return '123456';
     }
 
-    async sendOtp(dto: RequestOtpDto) {
-        const { mobile } = dto;
+    async sendOtp(mobile: string) {
         const otp = this.generateOtp();
 
 
@@ -49,8 +49,7 @@ export class AuthService {
         return { message: `OTP sent to ${mobile}` };
     }
 
-    async verifyOtp(dto: VerifyOtpDto) {
-        const { mobile, otp } = dto;
+    async verifyOtp(mobile: string, otp: string): Promise<AuthResponseDto> {
         const user = await this.usersRepo.findOne({ where: { mobile } });
 
         if (!user) {
@@ -75,17 +74,26 @@ export class AuthService {
 
         const token = this.jwtService.sign(
             { sub: user.id, mobile: user.mobile },
-            { secret: this.jwtSecret },
+            { secret: this.jwtSecret, expiresIn: '24h' },
         );
 
-        return { access_token: token };
+        return {
+            access_token: token,
+            expires_in: 24 * 60 * 60 // 24 hours in seconds
+        };
     }
 
-    async me(userId: string) {
-        return this.usersRepo.findOne({
+    async getProfile(userId: string) {
+        const user = await this.usersRepo.findOne({
             where: { id: userId },
-            select: ['id', 'mobile'],
+            relations: ['profile'],
         });
+
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        return user;
     }
 
     async deleteUser(userId: string) {
@@ -100,5 +108,55 @@ export class AuthService {
     async deleteAllUsers() {
         await this.usersRepo.clear();
         return { message: 'All users deleted successfully' };
+    }
+
+    async signup(dto: SignupDto): Promise<AuthResponseDto> {
+        const { mobile } = dto;
+        const exists = await this.usersRepo.findOne({ where: { mobile } });
+
+        if (exists) {
+            throw new ConflictException('Mobile number already registered');
+        }
+
+        const user = this.usersRepo.create(dto);
+        await this.usersRepo.save(user);
+
+        const token = this.jwtService.sign(
+            { sub: user.id, mobile: user.mobile },
+            { secret: this.jwtSecret, expiresIn: '24h' },
+        );
+
+        return {
+            access_token: token,
+            expires_in: 24 * 60 * 60 // 24 hours in seconds
+        };
+    }
+
+    async login(dto: LoginDto): Promise<AuthResponseDto> {
+        const { mobile } = dto;
+        const user = await this.usersRepo.findOne({ where: { mobile } });
+
+        if (!user) {
+            throw new UnauthorizedException('Invalid credentials');
+        }
+
+        const token = this.jwtService.sign(
+            { sub: user.id, mobile: user.mobile },
+            { secret: this.jwtSecret, expiresIn: '24h' },
+        );
+
+        return {
+            access_token: token,
+            expires_in: 24 * 60 * 60 // 24 hours in seconds
+        };
+    }
+
+    async logout(userId: string): Promise<void> {
+        const user = await this.usersRepo.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+        // In a real app, you might want to invalidate the token here
+        // For now, we'll just return as the client will remove the token
     }
 }

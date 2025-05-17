@@ -1,4 +1,4 @@
-import { IsMobilePhone, IsString, Length } from 'class-validator';
+import { IsMobilePhone, IsString, Length, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RequestOtpDto {
@@ -16,4 +16,26 @@ export class VerifyOtpDto {
     @IsString()
     @Length(6, 6)
     otp: string;
+}
+
+export class SignupDto {
+    @ApiProperty({ example: '+919876543210' })
+    @IsMobilePhone()
+    mobile: string;
+
+    @ApiProperty({ example: 'mySecurePassword123' })
+    @IsString()
+    @MinLength(8)
+    password: string;
+}
+
+export class LoginDto {
+    @ApiProperty({ example: '+919876543210' })
+    @IsMobilePhone()
+    mobile: string;
+
+    @ApiProperty({ example: 'mySecurePassword123' })
+    @IsString()
+    @MinLength(8)
+    password: string;
 }
