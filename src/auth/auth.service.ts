@@ -113,8 +113,39 @@ export class AuthService {
     }
 
     async deleteAllUsers() {
-        await this.usersRepo.clear();
-        return { message: 'All users deleted successfully' };
+        const queryRunner = this.usersRepo.manager.connection.createQueryRunner();
+        
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        
+        try {
+            // Disable triggers temporarily
+            await queryRunner.query('ALTER TABLE bookmark DISABLE TRIGGER ALL');
+            await queryRunner.query('ALTER TABLE invitation DISABLE TRIGGER ALL');
+            await queryRunner.query('ALTER TABLE profile DISABLE TRIGGER ALL');
+            await queryRunner.query('ALTER TABLE "user" DISABLE TRIGGER ALL');
+            
+            // Clear all tables
+            await queryRunner.query('TRUNCATE TABLE bookmark CASCADE');
+            await queryRunner.query('TRUNCATE TABLE invitation CASCADE');
+            await queryRunner.query('TRUNCATE TABLE profile CASCADE');
+            await queryRunner.query('TRUNCATE TABLE "user" CASCADE');
+            
+            // Re-enable triggers
+            await queryRunner.query('ALTER TABLE bookmark ENABLE TRIGGER ALL');
+            await queryRunner.query('ALTER TABLE invitation ENABLE TRIGGER ALL');
+            await queryRunner.query('ALTER TABLE profile ENABLE TRIGGER ALL');
+            await queryRunner.query('ALTER TABLE "user" ENABLE TRIGGER ALL');
+            
+            await queryRunner.commitTransaction();
+            
+            return { message: 'All users deleted successfully' };
+        } catch (err) {
+            await queryRunner.rollbackTransaction();
+            throw new Error('Failed to delete all users: ' + err.message);
+        } finally {
+            await queryRunner.release();
+        }
     }
 
     async logout(userId: string): Promise<void> {
