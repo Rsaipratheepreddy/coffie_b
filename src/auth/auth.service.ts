@@ -7,6 +7,7 @@ import { Repository } from 'typeorm';
 import { User } from 'src/entities/user.entity';
 import { AuthResponseDto } from './dtos/auth-response.dto';
 import { RequestOtpDto, VerifyOtpDto } from './dtos/signup.dto';
+import { UserProfileDto } from './dtos/user-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -82,7 +83,7 @@ export class AuthService {
         };
     }
 
-    async getProfile(userId: string) {
+    async getProfile(userId: string): Promise<UserProfileDto> {
         const user = await this.usersRepo.findOne({
             where: { id: userId },
             relations: ['profile'],
@@ -92,7 +93,14 @@ export class AuthService {
             throw new UnauthorizedException('User not found');
         }
 
-        return user;
+        const profile: UserProfileDto = {
+            id: user.id,
+            mobile: user.mobile,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt
+        };
+
+        return profile;
     }
 
     async deleteUser(userId: string) {

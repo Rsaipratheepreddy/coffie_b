@@ -7,6 +7,8 @@ import {
     JoinColumn,
     OneToMany,
     Index,
+    CreateDateColumn,
+    UpdateDateColumn,
 } from 'typeorm';
 import { Invitation } from './invite.entity';
 import { Bookmark } from './bookmark.entity';
@@ -47,4 +49,10 @@ export class User {
     })
     @JoinColumn({ name: 'profile_id' })
     profile: Profile;
+
+    @CreateDateColumn()
+    createdAt: Date;
+
+    @UpdateDateColumn()
+    updatedAt: Date;
 }
