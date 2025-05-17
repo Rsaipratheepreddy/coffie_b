@@ -61,7 +61,14 @@ export class ProfileService {
 
         const browser = await puppeteer.launch({
             headless: true,
-            args: ['--no-sandbox']
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--disable-gpu',
+                '--window-size=1920x1080'
+            ]
         });
 
         try {
@@ -91,7 +98,38 @@ export class ProfileService {
 
             await page.setCookie(...cookies);
 
-            await page.goto(linkedinUrl, { waitUntil: 'networkidle0' });
+            // Set longer timeout and wait for specific selectors
+            page.setDefaultNavigationTimeout(60000); // 60 seconds
+            page.setDefaultTimeout(60000);
+
+            await page.goto(linkedinUrl, { 
+                waitUntil: 'networkidle0',
+                timeout: 60000
+            });
+
+            // Wait for key elements to be present
+            try {
+                await page.waitForSelector('h1', { timeout: 10000 });
+            } catch (error) {
+                // Check if we hit login page
+                const isLoginPage = await page.evaluate(() => {
+                    return !!document.querySelector('.login__form') || 
+                           window.location.href.includes('linkedin.com/login');
+                });
+                
+                if (isLoginPage) {
+                    throw new BadRequestException(
+                        'LinkedIn authentication failed. Please update your cookies in the .env file. ' +
+                        'To get new cookies: 1) Login to LinkedIn in your browser, ' +
+                        '2) Open DevTools (F12), 3) Go to Application > Cookies, ' +
+                        '4) Copy new values for li_at and JSESSIONID'
+                    );
+                }
+                
+                throw new BadRequestException(
+                    'Failed to load LinkedIn profile. Please verify the profile URL is correct and publicly accessible.'
+                );
+            }
 
             const profileData = await page.evaluate(() => {
                 const name = document.querySelector('h1')?.textContent?.trim() || '';
@@ -167,6 +205,20 @@ export class ProfileService {
 
             return this.getProfileByUserId(userId);
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error; // Re-throw our custom errors
+            }
+            
+            // Handle specific error types
+            if (error.name === 'TimeoutError') {
+                throw new BadRequestException(
+                    'LinkedIn profile loading timed out. This could be due to: ' +
+                    '1) Slow internet connection, ' +
+                    '2) Invalid or expired cookies, or ' +
+                    '3) Profile is not publicly accessible'
+                );
+            }
+            
             throw new BadRequestException(`Failed to fetch LinkedIn profile: ${error.message}`);
         } finally {
             await browser.close();
