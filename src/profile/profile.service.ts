@@ -108,6 +108,14 @@ export class ProfileService {
                 }
                 req.continue();
             });
+            page.on('response', async response => {
+                if (response.status() >= 400) {
+                    console.error(`Error response: ${response.status()} for URL: ${response.url()}`);
+                    if (response.status() === 502) {
+                        throw new BadRequestException(`Received 502 Bad Gateway error from LinkedIn. This is likely a temporary server issue on LinkedIn's end. Please try again later.`);
+                    }
+                }
+            });
 
             // Check session validity
             try {
