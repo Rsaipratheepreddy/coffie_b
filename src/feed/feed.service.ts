@@ -35,7 +35,6 @@ export class FeedService {
                 'profile.background',
                 'profile.experiences',
                 'profile.education',
-                'profile.interests',
             ],
             select: ['id', 'mobile', 'profile'],
             order: {
@@ -74,7 +73,6 @@ export class FeedService {
                 'profile.background',
                 'profile.experiences',
                 'profile.education',
-                'profile.interests',
             ],
             order: { id: 'DESC' },
         });
@@ -97,7 +95,6 @@ export class FeedService {
                 'profile.background',
                 'profile.experiences',
                 'profile.education',
-                'profile.interests',
             ],
             order: { id: 'DESC' },
         });
