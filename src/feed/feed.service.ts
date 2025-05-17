@@ -45,14 +45,9 @@ export class FeedService {
         });
 
         return {
-            users,
-            pagination: {
-                total,
-                page,
-                limit,
-                totalPages: Math.ceil(total / limit),
-            },
-            emptyFeed: total === 0
+            user: users.length > 0 ? users[0] : null,
+            total: users.length,
+            emptyFeed: users.length === 0
         };
     }
 
