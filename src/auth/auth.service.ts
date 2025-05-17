@@ -122,9 +122,9 @@ export class AuthService {
             await queryRunner.query('DELETE FROM invitation');
             await queryRunner.query('DELETE FROM experience');
             await queryRunner.query('DELETE FROM education');
+            await queryRunner.query('DELETE FROM "user"');
             await queryRunner.query('DELETE FROM profile');
             await queryRunner.query('DELETE FROM background');
-            await queryRunner.query('DELETE FROM "user"');
 
             await queryRunner.commitTransaction();
         } catch (error) {
