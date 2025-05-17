@@ -60,7 +60,7 @@ export class ProfileService {
         }
 
         const browser = await puppeteer.launch({
-            headless: true, // Use headless mode
+            headless: true,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -68,120 +68,95 @@ export class ProfileService {
                 '--disable-accelerated-2d-canvas',
                 '--window-size=1920x1080',
                 '--disable-notifications',
-                '--enable-automation',
-                '--start-maximized'
+                '--enable-automation'
             ],
-            defaultViewport: {
-                width: 1920,
-                height: 1080
-            }
-        });
-        
-        // Enable request interception to log network issues
-        const pages = await browser.pages();
-        const page = pages[0] || await browser.newPage();
-        await page.setRequestInterception(true);
-        
-        // Log failed requests
-        page.on('requestfailed', request => {
-            console.error(`Failed request: ${request.url()} - ${request.failure().errorText}`);
+            defaultViewport: { width: 1920, height: 1080 }
         });
 
         try {
-            const page = await browser.newPage();
-            await page.setViewport({ width: 1280, height: 800 });
+            // 1) Open or reuse the first page
+            const pages = await browser.pages();
+            const page = pages[0] || await browser.newPage();
 
-            // Set LinkedIn authentication cookies
+            // 2) Clear any old storage & cookies
+            await page.setCookie();                                    // reset any in-memory cookies
+            await page.deleteCookie(...(await page.cookies()));
+            await page.evaluate(() => {
+                localStorage.clear();
+                sessionStorage.clear();
+            });
+
+            // 3) Block images, CSS, fonts & analytics to speed up navigation
+            await page.setRequestInterception(true);
+            page.on('request', req => {
+                const url = req.url().toLowerCase();
+                if (
+                    req.resourceType() === 'image' ||
+                    url.endsWith('.css') ||
+                    url.endsWith('.woff2') ||
+                    url.includes('analytics')
+                ) {
+                    return req.abort();
+                }
+                req.continue();
+            });
+            page.on('requestfailed', req => {
+                console.error(`Request failed: ${req.url()} → ${req.failure()?.errorText}`);
+            });
+
+            // 4) Inject fresh LinkedIn cookies
             const liAt = process.env.LINKEDIN_COOKIES_LI_AT;
             const jsessionId = process.env.LINKEDIN_COOKIES_JSESSIONID;
-
             if (!liAt || !jsessionId) {
-                throw new BadRequestException('LinkedIn authentication cookies not fully configured. Required: li_at and JSESSIONID');
+                throw new BadRequestException('Missing LinkedIn cookies: set LINKEDIN_COOKIES_LI_AT & _JSESSIONID');
+            }
+            await page.setCookie(
+                { name: 'li_at', value: liAt, domain: '.linkedin.com' },
+                { name: 'JSESSIONID', value: jsessionId, domain: '.linkedin.com' }
+            );
+
+            // 5) Setup timeouts
+            page.setDefaultNavigationTimeout(60_000);
+            page.setDefaultTimeout(60_000);
+
+            // 6) Quick session check via lightweight API
+            const apiResp = await page.goto('https://www.linkedin.com/voyager/api/me', {
+                waitUntil: 'networkidle2',
+                timeout: 20_000
+            });
+            if (!apiResp || apiResp.status() !== 200) {
+                throw new BadRequestException('LinkedIn session invalid – please refresh your cookies.');
             }
 
-            const cookies = [
-                {
-                    name: 'li_at',
-                    value: liAt,
-                    domain: '.linkedin.com'
-                },
-                {
-                    name: 'JSESSIONID',
-                    value: jsessionId,
-                    domain: '.linkedin.com'
-                }
-            ];
-
-            await page.setCookie(...cookies);
-
-            // Set longer timeout and wait for specific selectors
-            page.setDefaultNavigationTimeout(60000); // 60 seconds
-            page.setDefaultTimeout(60000);
-
-            console.log('Navigating to LinkedIn profile...');
-            
-            // First try to load a simple LinkedIn page to verify cookies
-            await page.goto('https://www.linkedin.com/feed/', {
-                waitUntil: 'networkidle0',
-                timeout: 30000
-            });
-            
-            // Take a screenshot for debugging
-            await page.screenshot({ path: '/tmp/linkedin-debug.png' });
-            
-            // Check if we're logged in
-            const isLoggedIn = await page.evaluate(() => {
-                return !document.querySelector('.login__form') && 
-                       !window.location.href.includes('linkedin.com/login');
-            });
-            
-            if (!isLoggedIn) {
-                throw new BadRequestException(
-                    'LinkedIn cookies are expired. Please update them in .env:\n' +
-                    '1. Login to LinkedIn in Chrome\n' +
-                    '2. Press F12 for DevTools\n' +
-                    '3. Go to Application > Cookies > linkedin.com\n' +
-                    '4. Copy new values for li_at and JSESSIONID\n' +
-                    '5. Update LINKEDIN_COOKIES_LI_AT and LINKEDIN_COOKIES_JSESSIONID in .env'
-                );
-            }
-            
-            console.log('Successfully verified LinkedIn auth, loading profile...');
-            
-            // Now load the actual profile
-            await page.goto(linkedinUrl, { 
-                waitUntil: 'networkidle0',
-                timeout: 30000
-            });
-
-            // Wait for key elements to be present
+            // 7) Load actual profile
             try {
-                await page.waitForSelector('h1', { timeout: 10000 });
-            } catch (error) {
-                // Check if we hit login page
-                const isLoginPage = await page.evaluate(() => {
-                    return !!document.querySelector('.login__form') || 
-                           window.location.href.includes('linkedin.com/login');
-                });
-                
-                if (isLoginPage) {
+                await page.goto(linkedinUrl, { waitUntil: 'networkidle2', timeout: 30_000 });
+                await page.waitForSelector('h1', { timeout: 10_000 });
+            } catch (err) {
+                if (err instanceof puppeteer.TimeoutError) {
                     throw new BadRequestException(
-                        'LinkedIn authentication failed. Please update your cookies in the .env file. ' +
-                        'To get new cookies: 1) Login to LinkedIn in your browser, ' +
-                        '2) Open DevTools (F12), 3) Go to Application > Cookies, ' +
-                        '4) Copy new values for li_at and JSESSIONID'
+                        'Timed out loading LinkedIn profile. Try clearing cookies/cache, verifying URL visibility, or slowing your network.'
                     );
                 }
-                
-                throw new BadRequestException(
-                    'Failed to load LinkedIn profile. Please verify the profile URL is correct and publicly accessible.'
+                // Detect if LinkedIn redirected you to login
+                const isLoginPage = await page.evaluate(() =>
+                    !!document.querySelector('.login__form') ||
+                    window.location.href.includes('linkedin.com/login')
                 );
+                if (isLoginPage) {
+                    throw new BadRequestException(
+                        'LinkedIn authentication failed – update your li_at/JSESSIONID cookies in .env.'
+                    );
+                }
+                throw new BadRequestException(`Failed to load profile: ${err.message}`);
             }
 
+            // 8) Scrape the data
             const profileData = await page.evaluate(() => {
                 const name = document.querySelector('h1')?.textContent?.trim() || '';
                 const about = document.querySelector('.pv-about-section')?.textContent?.trim() || '';
-                const profilePicture = document.querySelector('.pv-top-card-profile-picture__image')?.getAttribute('src') ||
+                const profilePicture =
+                    document.querySelector('.pv-top-card-profile-picture__image')?.getAttribute('src') ||
                     document.querySelector('.profile-photo-edit__preview')?.getAttribute('src') || '';
 
                 const experiences = Array.from(document.querySelectorAll('.experience-section .pv-entity__position-group'));
@@ -201,12 +176,13 @@ export class ProfileService {
                 }));
 
                 const skills = Array.from(document.querySelectorAll('.pv-skill-category-entity__name-text'))
-                    .map(skill => skill.textContent?.trim())
+                    .map(el => el.textContent?.trim())
                     .filter(Boolean);
 
                 return { name, about, profilePicture, experiences: parsedExperiences, education: parsedEducation, skills };
             });
 
+            // 9) Persist into your DB as before
             const profile = await this.updateBaseProfileData(userId, {
                 name: profileData.name,
                 profilePicture: profileData.profilePicture
@@ -214,7 +190,7 @@ export class ProfileService {
 
             for (const exp of profileData.experiences) {
                 const [startDate, endDate] = exp.duration.split(' - ');
-                const experienceData: ExperienceDto = {
+                const dto: ExperienceDto = {
                     title: exp.title,
                     company: exp.company,
                     startDate: new Date(startDate || ''),
@@ -222,55 +198,39 @@ export class ProfileService {
                     description: exp.description,
                     currentlyWorkHere: endDate === 'Present'
                 };
-                const experience = this.experiencesRepo.create(experienceData);
-                experience.profile = profile;
-                await this.experiencesRepo.save(experience);
+                const entity = this.experiencesRepo.create(dto);
+                entity.profile = profile;
+                await this.experiencesRepo.save(entity);
             }
 
             for (const edu of profileData.education) {
                 const [startDate, endDate] = edu.duration.split(' - ');
-                const educationData: EducationDto = {
+                const dto: EducationDto = {
                     school: edu.school,
                     degree: edu.degree,
                     fieldOfStudy: edu.fieldOfStudy,
                     startDate: new Date(startDate || ''),
                     endDate: new Date(endDate || '')
                 };
-                const education = this.educationRepo.create(educationData);
-                education.profile = profile;
-                await this.educationRepo.save(education);
+                const entity = this.educationRepo.create(dto);
+                entity.profile = profile;
+                await this.educationRepo.save(entity);
             }
 
-            if (profileData.skills.length > 0) {
-                const backgroundData: BackgroundDto = {
-                    skills: profileData.skills
-                };
-                const background = this.backgroundsRepo.create(backgroundData);
-                background.profile = profile;
-                await this.backgroundsRepo.save(background);
+            if (profileData.skills.length) {
+                const dto: BackgroundDto = { skills: profileData.skills };
+                const entity = this.backgroundsRepo.create(dto);
+                entity.profile = profile;
+                await this.backgroundsRepo.save(entity);
             }
 
             return this.getProfileByUserId(userId);
-        } catch (error) {
-            if (error instanceof BadRequestException) {
-                throw error; // Re-throw our custom errors
-            }
-            
-            // Handle specific error types
-            if (error.name === 'TimeoutError') {
-                throw new BadRequestException(
-                    'LinkedIn profile loading timed out. This could be due to: ' +
-                    '1) Slow internet connection, ' +
-                    '2) Invalid or expired cookies, or ' +
-                    '3) Profile is not publicly accessible'
-                );
-            }
-            
-            throw new BadRequestException(`Failed to fetch LinkedIn profile: ${error.message}`);
+
         } finally {
             await browser.close();
         }
     }
+
 
     async getAllPrompts() {
         return { prompts: DEFAULT_PROMPTS };
