@@ -113,10 +113,26 @@ export class AuthService {
     }
 
     async deleteAllUsers(): Promise<void> {
+        const queryRunner = this.usersRepo.manager.connection.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
         try {
-            await this.usersRepo.delete({});
+            // Delete related entities first to avoid foreign key constraints
+            await queryRunner.query('DELETE FROM bookmark');
+            await queryRunner.query('DELETE FROM invitation');
+            await queryRunner.query('DELETE FROM experience');
+            await queryRunner.query('DELETE FROM education');
+            await queryRunner.query('DELETE FROM background');
+            await queryRunner.query('DELETE FROM profile');
+            await queryRunner.query('DELETE FROM "user"');
+
+            await queryRunner.commitTransaction();
         } catch (error) {
+            await queryRunner.rollbackTransaction();
             throw new Error(`Failed to delete all users: ${error.message}`);
+        } finally {
+            await queryRunner.release();
         }
     }
 
