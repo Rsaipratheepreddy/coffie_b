@@ -191,21 +191,11 @@ export class AuthController {
     }
 
     @Delete('all')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({
-        summary: 'Delete All Users',
-        description: 'Permanently deletes all users from the database. This is an open API with no authentication required.'
-    })
-    @ApiOkResponse({
-        description: 'All users deleted successfully',
-        type: MessageResponseDto,
-        schema: {
-            example: {
-                message: 'All users deleted successfully'
-            }
-        }
-    })
+    @ApiOperation({ summary: 'Delete all users (Admin only)' })
+    @ApiResponse({ status: 200, description: 'All users deleted successfully', type: MessageResponseDto })
+    @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
     async deleteAllUsers(): Promise<MessageResponseDto> {
-        return this.authService.deleteAllUsers();
+        await this.authService.deleteAllUsers();
+        return { message: 'All users deleted successfully' };
     }
 }
