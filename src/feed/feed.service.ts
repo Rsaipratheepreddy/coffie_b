@@ -66,7 +66,7 @@ export class FeedService {
             .map(b => b.bookmarkedUser.id);
         if (bookmarkedUserIds.length === 0) return [];
 
-        return this.usersRepo.find({
+        const bookmarkedUsers = await this.usersRepo.find({
             where: { id: In(bookmarkedUserIds) },
             relations: [
                 'profile',
@@ -76,6 +76,7 @@ export class FeedService {
             ],
             order: { id: 'DESC' },
         });
+        return bookmarkedUsers;
     }
 
     async getPassByProfiles(userId: string): Promise<User[]> {
@@ -90,7 +91,7 @@ export class FeedService {
             .map(b => b.bookmarkedUser.id);
         if (passByUserIds.length === 0) return [];
 
-        return this.usersRepo.find({
+        const passByUsers = await this.usersRepo.find({
             where: { id: In(passByUserIds) },
             relations: [
                 'profile',
@@ -100,6 +101,7 @@ export class FeedService {
             ],
             order: { id: 'DESC' },
         });
+        return passByUsers;
     }
 
     async updatePassBy(userId: string, targetUserId: string): Promise<Bookmark> {
