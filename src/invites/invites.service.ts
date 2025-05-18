@@ -121,12 +121,34 @@ export class InvitesService {
         const [sent, received] = await Promise.all([
             this.invitesRepo.find({
                 where: { inviter: { id: userId } },
-                relations: ['invitee', 'inviter'],
+                relations: [
+                    'invitee',
+                    'invitee.profile',
+                    'invitee.profile.background',
+                    'invitee.profile.experiences',
+                    'invitee.profile.education',
+                    'inviter',
+                    'inviter.profile',
+                    'inviter.profile.background',
+                    'inviter.profile.experiences',
+                    'inviter.profile.education',
+                ],
                 order: { createdAt: 'DESC' }
             }),
             this.invitesRepo.find({
                 where: { invitee: { id: userId } },
-                relations: ['inviter', 'invitee'],
+                relations: [
+                    'inviter',
+                    'inviter.profile',
+                    'inviter.profile.background',
+                    'inviter.profile.experiences',
+                    'inviter.profile.education',
+                    'invitee',
+                    'invitee.profile',
+                    'invitee.profile.background',
+                    'invitee.profile.experiences',
+                    'invitee.profile.education',
+                ],
                 order: { createdAt: 'DESC' }
             }),
         ]);
