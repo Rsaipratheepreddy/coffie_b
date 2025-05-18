@@ -6,6 +6,7 @@ import {
     Request,
     UseGuards,
     Query,
+    Post,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -33,7 +34,11 @@ export class FeedController {
             example: { availableUsersCount: 42, user: {} },
         },
     })
-    getFeed(@Request() req, @Query('offset') offset?: string, @Query('limit') limit?: string) {
+    getFeed(
+        @Request() req,
+        @Query('offset') offset?: string,
+        @Query('limit') limit?: string,
+    ) {
         const offsetNum = offset ? parseInt(offset, 10) : 0;
         const limitNum = limit ? parseInt(limit, 10) : 1;
         return this.feedService.getFeed(req.user.id, offsetNum, limitNum);
@@ -54,23 +59,25 @@ export class FeedController {
         return this.feedService.getPassByProfiles(req.user.id);
     }
 
-    @Put('bookmark/:targetId')
-    @ApiOperation({ summary: 'Bookmark a user' })
+    @Post('bookmark/:targetId')
+    @ApiOperation({ summary: 'Add a bookmark' })
     @ApiOkResponse({ type: Bookmark })
-    updateBookmark(
+    addBookmark(
         @Param('targetId') targetId: string,
         @Request() req,
     ): Promise<Bookmark> {
         return this.feedService.updateBookmark(req.user.id, targetId);
     }
 
-    @Put('pass-by/:targetId')
-    @ApiOperation({ summary: 'Pass by a user' })
+    @Post('pass-by/:targetId')
+    @ApiOperation({ summary: 'Add a pass-by' })
     @ApiOkResponse({ type: Bookmark })
-    updatePassBy(
+    addPassBy(
         @Param('targetId') targetId: string,
         @Request() req,
     ): Promise<Bookmark> {
         return this.feedService.updatePassBy(req.user.id, targetId);
     }
+
+
 }
