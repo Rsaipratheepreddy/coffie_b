@@ -29,5 +29,6 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth/jwt-auth.guard';
   ],
   providers: [ProfileService, JwtStrategy, JwtAuthGuard],
   controllers: [ProfileController],
+  exports: [ProfileService],
 })
 export class ProfileModule { }
