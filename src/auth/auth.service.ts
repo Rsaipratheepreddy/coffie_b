@@ -8,6 +8,7 @@ import { User } from 'src/entities/user.entity';
 import { AuthResponseDto } from './dtos/auth-response.dto';
 import { RequestOtpDto, VerifyOtpDto } from './dtos/signup.dto';
 import { UserProfileDto } from './dtos/user-profile.dto';
+import { ProfileService } from 'src/profile/profile.service';
 
 @Injectable()
 export class AuthService {
@@ -18,6 +19,7 @@ export class AuthService {
         private readonly usersRepo: Repository<User>,
         private readonly jwtService: JwtService,
         configService: ConfigService,
+        private readonly profileService: ProfileService,
     ) {
         this.jwtSecret = configService.get<string>('JWT_SECRET');
         if (!this.jwtSecret) throw new Error('JWT_SECRET must be defined');
@@ -50,7 +52,7 @@ export class AuthService {
     }
 
     async verifyOtp(mobile: string, otp: string): Promise<AuthResponseDto> {
-        const user = await this.usersRepo.findOne({ where: { mobile } });
+        const user = await this.usersRepo.findOne({ where: { mobile }, relations: ['profile'] });
 
         if (!user) {
             throw new UnauthorizedException('Invalid mobile number');
@@ -71,6 +73,10 @@ export class AuthService {
         user.otpHash = null;
         user.otpExpiry = null;
         await this.usersRepo.save(user);
+
+        if (!user.profile) {
+            await this.profileService.generateRandomProfile(user.id);
+        }
 
         const token = this.jwtService.sign(
             { sub: user.id, mobile: user.mobile },

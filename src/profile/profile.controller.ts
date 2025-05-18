@@ -39,7 +39,6 @@ export class ProfileController {
     @ApiOperation({ summary: 'Get current user profile' })
     @ApiOkResponse({ type: Profile })
     me(@Request() req): Promise<Profile> {
-        console.log('req.user', req.user);
         return this.profileService.getProfileByUserId(req.user.id);
     }
 

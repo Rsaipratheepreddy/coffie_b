@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { JwtAuthGuard } from './jwt-auth/jwt-auth.guard';
 import { User } from 'src/entities/user.entity';
 import { JwtStrategy } from './local-strategy/local-strategy';
+import { ProfileModule } from '../profile/profile.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { JwtStrategy } from './local-strategy/local-strategy';
         signOptions: { expiresIn: '1h' },
       }),
     }),
+    ProfileModule,
   ],
   providers: [AuthService, JwtStrategy, JwtAuthGuard],
   controllers: [AuthController],

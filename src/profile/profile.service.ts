@@ -44,6 +44,126 @@ export class ProfileService {
         await this.usersRepo.save(user);
         return user.profile;
     }
+    async generateRandomProfile(userId: string): Promise<Profile> {
+        const user = await this.usersRepo.findOne({ where: { id: userId }, relations: ['profile'] });
+        if (!user) throw new NotFoundException(`User with id=${userId} not found`);
+
+        const names = ['John Doe', 'Jane Smith', 'Alex Johnson', 'Emily Brown', 'Michael Davis'];
+        const locations = ['New York, NY', 'San Francisco, CA', 'London, UK', 'Toronto, ON', 'Sydney, AU'];
+        const randomName = names[Math.floor(Math.random() * names.length)];
+        const randomAge = Math.floor(Math.random() * (40 - 22 + 1)) + 22;
+        const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+        const randomLinkedin = `https://linkedin.com/in/${randomName.replace(' ', '').toLowerCase()}`;
+        const randomProfilePicture = `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 100)}.jpg`;
+        const randomSchedulingLink = `https://calendly.com/${randomName.replace(' ', '').toLowerCase()}`;
+
+        const profileData = {
+            name: randomName,
+            age: randomAge,
+            location: randomLocation,
+            linkedin: randomLinkedin,
+            profilePicture: randomProfilePicture,
+            schedulingLink: randomSchedulingLink,
+            myIdes: 'Random ideas or description here.',
+            selectedPromptIds: [],
+        };
+
+        let profile: Profile;
+        if (!user.profile) {
+            profile = this.profilesRepo.create(profileData);
+            user.profile = profile;
+        } else {
+            Object.assign(user.profile, profileData);
+            profile = user.profile;
+        }
+
+        await this.usersRepo.save(user).catch(err => {
+            throw new Error(`Failed to save user profile: ${err.message}`);
+        });
+
+        // Generate random background
+        const commitmentLevels = ['Full-time', 'Part-time', 'Consulting'];
+        const equityExceptions = ['Yes', 'No', 'Negotiable'];
+        const matchingIntentions = ['Co-founder', 'Early Employee', 'Advisor'];
+        const backgroundData = {
+            commitmentLevel: commitmentLevels[Math.floor(Math.random() * commitmentLevels.length)],
+            equityException: equityExceptions[Math.floor(Math.random() * equityExceptions.length)],
+            matchingIntention: matchingIntentions[Math.floor(Math.random() * matchingIntentions.length)],
+            numberOfFounders: Math.floor(Math.random() * (5 - 1 + 1)) + 1, // Random between 1 and 5
+            priorStartUpExperience: Math.random() > 0.5 ? 'Yes' : 'No',
+            skills: ['JavaScript', 'Python', 'Marketing', 'Product Management', 'UI/UX Design', 'Sales'].slice(0, Math.floor(Math.random() * 3) + 2),
+            description: 'A passionate professional with diverse skills and experience.',
+        };
+
+        const background = this.backgroundsRepo.create(backgroundData);
+        profile.background = background;
+        await this.profilesRepo.save(profile).catch(err => {
+            throw new Error(`Failed to save profile background: ${err.message}`);
+        });
+
+        // Generate random experiences (3 to 5)
+        const companies = ['Google', 'Microsoft', 'Amazon', 'Facebook', 'Apple', 'Netflix'];
+        const titles = ['Software Engineer', 'Product Manager', 'Data Scientist', 'Marketing Lead', 'UX Designer', 'Sales Manager'];
+        const numExperiences = Math.floor(Math.random() * (5 - 3 + 1)) + 3; // Random between 3 and 5
+        const experiences = [];
+        for (let i = 0; i < numExperiences; i++) {
+            const startYear = 2015 + i;
+            const currentlyWorkHere = i === numExperiences - 1 && Math.random() > 0.7;
+            const company = companies[Math.floor(Math.random() * companies.length)];
+            const title = titles[Math.floor(Math.random() * titles.length)];
+            const experienceData = {
+                title: title,
+                company: company,
+                startDate: `${startYear}-01-01`,
+                endDate: currentlyWorkHere ? null : `${startYear + 2}-12-31`,
+                currentlyWorkHere,
+                description: `Worked on various projects at ${company} as a ${title}.`,
+            };
+            const experience = this.experiencesRepo.create(experienceData);
+            experience.profile = profile;
+            experiences.push(experience);
+        }
+        await this.experiencesRepo.save(experiences).catch(err => {
+            throw new Error(`Failed to save experiences: ${err.message}`);
+        });
+
+        const schools = ['MIT', 'Stanford', 'Harvard', 'Oxford', 'Cambridge'];
+        const degrees = ['B.Sc. Computer Science', 'MBA', 'B.A. Economics', 'M.Sc. Data Science', 'B.Eng. Mechanical Engineering'];
+        const fieldsOfStudy = ['Computer Science', 'Business Administration', 'Economics', 'Data Science', 'Mechanical Engineering'];
+        const educations = [];
+        for (let i = 0; i < 2; i++) {
+            const startYear = 2010 + (i * 2);
+            const school = schools[Math.floor(Math.random() * schools.length)];
+            const fieldOfStudy = fieldsOfStudy[Math.floor(Math.random() * fieldsOfStudy.length)];
+            const educationData = {
+                school: school,
+                degree: degrees[Math.floor(Math.random() * degrees.length)],
+                fieldOfStudy: fieldOfStudy,
+                startDate: `${startYear}-09-01`,
+                endDate: `${startYear + 4}-06-30`,
+                description: `Studied ${fieldOfStudy} at ${school}.`,
+            };
+            const education = this.educationRepo.create(educationData);
+            education.profile = profile;
+            educations.push(education);
+        }
+        await this.educationRepo.save(educations).catch(err => {
+            throw new Error(`Failed to save educations: ${err.message}`);
+        });
+
+        if (DEFAULT_PROMPTS && DEFAULT_PROMPTS.length > 0) {
+            const numPrompts = Math.min(Math.floor(Math.random() * (DEFAULT_PROMPTS.length - 3 + 1)) + 3, DEFAULT_PROMPTS.length); // At least 3 prompts if available
+            const selectedPrompts = DEFAULT_PROMPTS.sort(() => 0.5 - Math.random()).slice(0, numPrompts);
+            profile.selectedPromptIds = selectedPrompts.map(p => (p || p.toString()));
+        } else {
+            profile.selectedPromptIds = [];
+        }
+
+        await this.profilesRepo.save(profile).catch(err => {
+            throw new Error(`Failed to save final profile with prompts: ${err.message}`);
+        });
+        return profile;
+    }
 
     async getProfileByUserId(userId: string): Promise<Profile> {
         const profile = await this.profilesRepo.findOne({
