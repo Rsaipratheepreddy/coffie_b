@@ -42,6 +42,12 @@ export class Bookmark {
     })
     type: BookmarkType;
 
+    @Column({ default: false })
+    bookmarked: boolean;
+
+    @Column({ default: false })
+    passedBy: boolean;
+
     @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
     createdAt: Date;
 }

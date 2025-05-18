@@ -21,7 +21,7 @@ export class FeedService {
         });
 
         const passedOnUsers = bookmarks
-            .filter(b => b.type === BookmarkType.PASS_BY)
+            .filter(b => b.passedBy)
             .map(b => b.bookmarkedUser.id);
 
         const excludeIds = [userId, ...passedOnUsers];
@@ -56,7 +56,7 @@ export class FeedService {
 
     async getBookMarkedProfiles(userId: string): Promise<{ users: User[] }> {
         const bookmarks = await this.bookmarkRepo.find({
-            where: { user: { id: userId }, type: BookmarkType.BOOKMARK },
+            where: { user: { id: userId }, bookmarked: true },
             relations: ['bookmarkedUser'],
             order: { id: 'DESC' },
         });
@@ -81,7 +81,7 @@ export class FeedService {
 
     async getPassByProfiles(userId: string): Promise<{ users: User[] }> {
         const bookmarks = await this.bookmarkRepo.find({
-            where: { user: { id: userId }, type: BookmarkType.PASS_BY },
+            where: { user: { id: userId }, passedBy: true },
             relations: ['bookmarkedUser'],
             order: { id: 'DESC' },
         });
@@ -106,7 +106,7 @@ export class FeedService {
         }
     }
 
-    async updatePassBy(userId: string, targetUserId: string): Promise<Bookmark> {
+    async updatePassBy(userId: string, targetUserId: string, value = true): Promise<Bookmark> {
         const [me, target] = await Promise.all([
             this.usersRepo.findOne({ where: { id: userId } }),
             this.usersRepo.findOne({ where: { id: targetUserId } }),
@@ -122,17 +122,16 @@ export class FeedService {
             bm = this.bookmarkRepo.create({
                 user: me,
                 bookmarkedUser: target,
-                type: BookmarkType.PASS_BY,
+                bookmarked: false,
+                passedBy: value,
             });
         } else {
-            bm.type = BookmarkType.PASS_BY;
-            bm.createdAt = new Date();
+            bm.passedBy = value;
         }
-
         return this.bookmarkRepo.save(bm);
     }
 
-    async updateBookmark(userId: string, targetUserId: string): Promise<Bookmark> {
+    async updateBookmark(userId: string, targetUserId: string, value = true): Promise<Bookmark> {
         const [me, target] = await Promise.all([
             this.usersRepo.findOne({ where: { id: userId } }),
             this.usersRepo.findOne({ where: { id: targetUserId } }),
@@ -148,13 +147,12 @@ export class FeedService {
             bm = this.bookmarkRepo.create({
                 user: me,
                 bookmarkedUser: target,
-                type: BookmarkType.BOOKMARK,
+                bookmarked: value,
+                passedBy: false,
             });
         } else {
-            bm.type = BookmarkType.BOOKMARK;
-            bm.createdAt = new Date();
+            bm.bookmarked = value;
         }
-
         return this.bookmarkRepo.save(bm);
     }
 }
