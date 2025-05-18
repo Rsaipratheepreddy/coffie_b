@@ -152,9 +152,28 @@ export class ProfileService {
         });
 
         if (DEFAULT_PROMPTS && DEFAULT_PROMPTS.length > 0) {
-            const numPrompts = Math.min(Math.floor(Math.random() * (DEFAULT_PROMPTS.length - 3 + 1)) + 3, DEFAULT_PROMPTS.length); // At least 3 prompts if available
-            const selectedPrompts = DEFAULT_PROMPTS.sort(() => 0.5 - Math.random()).slice(0, numPrompts);
-            profile.selectedPromptIds = selectedPrompts.map(p => (p || p.toString()));
+            const numPrompts = Math.min(Math.floor(Math.random() * 3) + 1, DEFAULT_PROMPTS.length); // Random number between 1 and 3, limited by available prompts
+            const selectedPrompts = DEFAULT_PROMPTS.sort(() => 0.5 - Math.random()).slice(0, numPrompts).filter(p => p !== null && p !== undefined) as any[];
+            const dummyDescriptions = [
+                "Tell me about a challenge you've overcome.",
+                "What's a hobby you're passionate about?",
+                "Describe a memorable travel experience."
+            ];
+            profile.selectedPromptIds = selectedPrompts.map((p, index) => {
+                let promptText = '';
+                if (typeof p === 'object' && p !== null && 'prompt' in p) {
+                    promptText = p.prompt;
+                } else if (typeof p === 'string') {
+                    promptText = p;
+                } else {
+                    promptText = String(p);
+                }
+                const description = typeof p === 'object' && p !== null && 'description' in p && p.description ? p.description : dummyDescriptions[index];
+                return JSON.stringify({
+                    prompt: promptText,
+                    description: description
+                });
+            });
         } else {
             profile.selectedPromptIds = [];
         }
