@@ -16,7 +16,7 @@ export class FeedService {
         private readonly profileRepo: Repository<Profile>,
     ) { }
 
-    async getFeed(userId: string, page = 1, limit = 10) {
+    async getFeed(userId: string, page = 1, limit = 1) {
         const bookmarks = await this.bookmarkRepo.find({
             where: { user: { id: userId } },
             relations: ['bookmarkedUser'],
@@ -41,13 +41,18 @@ export class FeedService {
                 id: 'DESC',
             },
             skip: (page - 1) * limit,
-            take: limit,
+            take: 1,
         });
 
         return {
-            user: users.length > 0 ? users[0] : null,
-            total: users.length,
-            emptyFeed: users.length === 0
+            users,
+            pagination: {
+                total,
+                page,
+                limit: 1,
+                totalPages: Math.ceil(total / 1),
+            },
+            emptyFeed: total === 0
         };
     }
 
