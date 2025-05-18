@@ -47,7 +47,7 @@ export class FeedController {
     @Get('bookmarks')
     @ApiOperation({ summary: 'Get all bookmarked profiles' })
     @ApiOkResponse({ type: [User] })
-    getBookmarked(@Request() req): Promise<User[]> {
+    getBookmarked(@Request() req): Promise<{ users: User[] }> {
         console.log('req.user', req.user);
         return this.feedService.getBookMarkedProfiles(req.user.id);
     }
@@ -55,7 +55,7 @@ export class FeedController {
     @Get('pass-by')
     @ApiOperation({ summary: 'Get all pass-by profiles' })
     @ApiOkResponse({ type: [User] })
-    getPassBy(@Request() req): Promise<User[]> {
+    getPassBy(@Request() req): Promise<{ users: User[] }> {
         return this.feedService.getPassByProfiles(req.user.id);
     }
 

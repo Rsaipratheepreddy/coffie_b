@@ -54,7 +54,7 @@ export class FeedService {
         };
     }
 
-    async getBookMarkedProfiles(userId: string): Promise<User[]> {
+    async getBookMarkedProfiles(userId: string): Promise<{ users: User[] }> {
         const bookmarks = await this.bookmarkRepo.find({
             where: { user: { id: userId }, type: BookmarkType.BOOKMARK },
             relations: ['bookmarkedUser'],
@@ -64,9 +64,9 @@ export class FeedService {
         const bookmarkedUserIds = bookmarks
             .filter(b => b.bookmarkedUser && b.bookmarkedUser.id)
             .map(b => b.bookmarkedUser.id);
-        if (bookmarkedUserIds.length === 0) return [];
+        if (bookmarkedUserIds.length === 0) return { users: [] };
 
-        return this.usersRepo.find({
+        const bookmarkedUsers = await this.usersRepo.find({
             where: { id: In(bookmarkedUserIds) },
             relations: [
                 'profile',
@@ -76,9 +76,10 @@ export class FeedService {
             ],
             order: { id: 'DESC' },
         });
+        return { users: bookmarkedUsers };
     }
 
-    async getPassByProfiles(userId: string): Promise<User[]> {
+    async getPassByProfiles(userId: string): Promise<{ users: User[] }> {
         const bookmarks = await this.bookmarkRepo.find({
             where: { user: { id: userId }, type: BookmarkType.PASS_BY },
             relations: ['bookmarkedUser'],
@@ -88,9 +89,9 @@ export class FeedService {
         const passByUserIds = bookmarks
             .filter(b => b.bookmarkedUser && b.bookmarkedUser.id)
             .map(b => b.bookmarkedUser.id);
-        if (passByUserIds.length === 0) return [];
+        if (passByUserIds.length === 0) return { users: [] };
 
-        return this.usersRepo.find({
+        const passByUsers = await this.usersRepo.find({
             where: { id: In(passByUserIds) },
             relations: [
                 'profile',
@@ -100,6 +101,9 @@ export class FeedService {
             ],
             order: { id: 'DESC' },
         });
+        return {
+            users: passByUsers,
+        }
     }
 
     async updatePassBy(userId: string, targetUserId: string): Promise<Bookmark> {
