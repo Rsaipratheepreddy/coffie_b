@@ -61,11 +61,13 @@ export class FeedService {
             order: { id: 'DESC' },
         });
 
-        const ids = bookmarks.map(b => b.bookmarkedUser.id);
-        if (ids.length === 0) return [];
+        const bookmarkedUserIds = bookmarks
+            .filter(b => b.bookmarkedUser && b.bookmarkedUser.id)
+            .map(b => b.bookmarkedUser.id);
+        if (bookmarkedUserIds.length === 0) return [];
 
         return this.usersRepo.find({
-            where: { id: In(ids) },
+            where: { id: In(bookmarkedUserIds) },
             relations: [
                 'profile',
                 'profile.background',
@@ -83,11 +85,13 @@ export class FeedService {
             order: { id: 'DESC' },
         });
 
-        const ids = bookmarks.map(b => b.bookmarkedUser.id);
-        if (ids.length === 0) return [];
+        const passByUserIds = bookmarks
+            .filter(b => b.bookmarkedUser && b.bookmarkedUser.id)
+            .map(b => b.bookmarkedUser.id);
+        if (passByUserIds.length === 0) return [];
 
         return this.usersRepo.find({
-            where: { id: In(ids) },
+            where: { id: In(passByUserIds) },
             relations: [
                 'profile',
                 'profile.background',

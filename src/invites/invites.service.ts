@@ -122,14 +122,12 @@ export class InvitesService {
             this.invitesRepo.find({
                 where: { inviter: { id: userId } },
                 relations: ['invitee', 'inviter'],
-                order: { createdAt: 'DESC' },
-                select: ['id', 'status', 'createdAt', 'updatedAt']
+                order: { createdAt: 'DESC' }
             }),
             this.invitesRepo.find({
                 where: { invitee: { id: userId } },
                 relations: ['inviter', 'invitee'],
-                order: { createdAt: 'DESC' },
-                select: ['id', 'status', 'createdAt', 'updatedAt']
+                order: { createdAt: 'DESC' }
             }),
         ]);
         return { sent, received };
