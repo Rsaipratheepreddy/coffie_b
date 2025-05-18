@@ -26,6 +26,7 @@ import { Background } from 'src/entities/background.entity';
 import { Experience } from 'src/entities/experience.entity';
 import { Education } from 'src/entities/education.entity';
 import { JwtAuthGuard } from 'src/auth/jwt-auth/jwt-auth.guard';
+import { Query } from '@nestjs/common';
 
 @ApiTags('Profile')
 @ApiBearerAuth()
@@ -41,6 +42,14 @@ export class ProfileController {
     me(@Request() req): Promise<Profile> {
         return this.profileService.getProfileByUserId(req.user.id);
     }
+
+    @Get('by-id')
+    @ApiOperation({ summary: 'Get profile by userId' })
+    @ApiOkResponse({ type: Profile })
+    getProfileById(@Query('userId') userId: string): Promise<Profile> {
+        return this.profileService.getProfileByUserId(userId);
+    }
+
 
     @Patch('base')
     @ApiOperation({ summary: 'Update base profile data' })
